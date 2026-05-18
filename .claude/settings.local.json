@@ -1,7 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "PowerShell($response = $null; try { Invoke-WebRequest -Uri \"http://localhost:8081/v3/api-docs\" -UseBasicParsing } catch [System.Net.WebException] { $stream = $_.Exception.Response.GetResponseStream\\(\\); $reader = [System.IO.StreamReader]::new\\($stream\\); Write-Output $reader.ReadToEnd\\(\\) })"
-    ]
-  }
-}

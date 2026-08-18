@@ -1,6 +1,9 @@
 package org.Employee.controller;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import org.Employee.dto.EmployeeDto;
 import org.Employee.entity.Employee;
 import org.Employee.service.EmployeeService;
@@ -20,11 +23,21 @@ public class EmployeeController {
     @Autowired
     private EmployeeService employeeService;
 
-    // CREATE — public (no auth needed)
+    // Inner request DTO — keeps role as a plain String for the API surface
+    public static class EmployeeRequest {
+        @NotBlank public String username;
+        @NotBlank @Size(min = 6) public String password;
+        @NotBlank @Email public String email;
+        public String role = "EMPLOYEE";
+    }
+
+    // CREATE — ADMIN only
     @PostMapping("/createEmployee")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<EmployeeDto> createEmployee(
-            @Valid @RequestBody Employee employee) {
-        Employee created = employeeService.createEmployee(employee);
+            @Valid @RequestBody EmployeeRequest req) {
+        Employee created = employeeService.createEmployee(
+                req.username, req.password, req.email, req.role);
         return new ResponseEntity<>(employeeService.toDto(created), HttpStatus.CREATED);
     }
 
@@ -44,7 +57,8 @@ public class EmployeeController {
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN','HR_MANAGER','MANAGER')")
     public ResponseEntity<EmployeeDto> getEmployeeById(@PathVariable Long id) {
-        return ResponseEntity.ok(employeeService.toDto(employeeService.getEmployeeById(id)));
+        return ResponseEntity.ok(
+                employeeService.toDto(employeeService.getEmployeeById(id)));
     }
 
     // UPDATE
@@ -52,8 +66,9 @@ public class EmployeeController {
     @PreAuthorize("hasAnyRole('ADMIN','HR_MANAGER')")
     public ResponseEntity<EmployeeDto> updateEmployee(
             @PathVariable Long id,
-            @Valid @RequestBody Employee employee) {
-        return ResponseEntity.ok(employeeService.toDto(employeeService.updateEmployee(id, employee)));
+            @Valid @RequestBody EmployeeRequest req) {
+        return ResponseEntity.ok(employeeService.toDto(
+                employeeService.updateEmployee(id, req.username, req.password, req.email, req.role)));
     }
 
     // DELETE — ADMIN only

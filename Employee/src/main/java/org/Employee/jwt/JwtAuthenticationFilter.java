@@ -1,9 +1,9 @@
 package org.Employee.jwt;
-
 import java.io.IOException;
 import java.util.List;
 
 import org.Employee.service.CustomUserDetailsService;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -21,10 +21,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtUtils jwtUtils;
     private final CustomUserDetailsService customUserDetailsService;
+    private final StringRedisTemplate redisTemplate;
 
     private static final List<String> EXCLUDED_PATHS = List.of(
         "/api/auth/",
-        "/api/employee/createEmployee",
         "/v3/api-docs",
         "/swagger-ui",
         "/swagger-resources",
@@ -33,9 +33,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     public JwtAuthenticationFilter(
             JwtUtils jwtUtils,
-            CustomUserDetailsService customUserDetailsService) {
+            CustomUserDetailsService customUserDetailsService,
+            StringRedisTemplate redisTemplate) {
         this.jwtUtils = jwtUtils;
         this.customUserDetailsService = customUserDetailsService;
+        this.redisTemplate = redisTemplate;
     }
 
     @Override
@@ -52,28 +54,36 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
 
         String authHeader = request.getHeader("Authorization");
-        String token = null;
-        String username = null;
-
-        if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            token = authHeader.substring(7);
-            username = jwtUtils.getUsernameFromToken(token);
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            filterChain.doFilter(request, response);
+            return;
         }
 
-        if (username != null
-                && SecurityContextHolder.getContext().getAuthentication() == null) {
+        String token = authHeader.substring(7).trim();
 
-            UserDetails userDetails =
-                    customUserDetailsService.loadUserByUsername(username);
+        // Reject refresh tokens — they are only valid for /api/auth/refresh
+        if (!jwtUtils.isAccessToken(token)) {
+            filterChain.doFilter(request, response);
+            return;
+        }
 
-            if (jwtUtils.validateToken(token)) {
-                UsernamePasswordAuthenticationToken authToken =
-                        new UsernamePasswordAuthenticationToken(
-                                userDetails, null, userDetails.getAuthorities());
-                authToken.setDetails(
-                        new WebAuthenticationDetailsSource().buildDetails(request));
-                SecurityContextHolder.getContext().setAuthentication(authToken);
+        // Reject blacklisted tokens
+        try {
+            if (Boolean.TRUE.equals(redisTemplate.hasKey("blacklist:" + token))) {
+                filterChain.doFilter(request, response);
+                return;
             }
+        } catch (Exception ignored) {}
+
+        if (jwtUtils.validateToken(token)
+                && SecurityContextHolder.getContext().getAuthentication() == null) {
+            String username = jwtUtils.getUsernameFromToken(token);
+            UserDetails userDetails = customUserDetailsService.loadUserByUsername(username);
+            UsernamePasswordAuthenticationToken authToken =
+                    new UsernamePasswordAuthenticationToken(
+                            userDetails, null, userDetails.getAuthorities());
+            authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+            SecurityContextHolder.getContext().setAuthentication(authToken);
         }
 
         filterChain.doFilter(request, response);

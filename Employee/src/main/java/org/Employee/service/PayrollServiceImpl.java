@@ -19,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 
 import java.util.List;
+import java.util.Optional;
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -28,6 +29,7 @@ public class PayrollServiceImpl implements PayrollService {
     private final SalaryStructureRepository salaryRepository;
     private final PayrollRepository payrollRepository;
     private final PayrollCalculator payrollCalculator;
+    private final PayrollGenerationHelper payrollGenerationHelper;
 
     @Override
     public GeneratePayrollResponse generatePayroll(GeneratePayrollRequest request) {
@@ -110,34 +112,15 @@ public class PayrollServiceImpl implements PayrollService {
         int skipped = 0;
 
         for (Employee employee : employees) {
-            // Skip employees with no salary structure
-            var salaryOpt = salaryRepository.findByEmployeeEmployeeId(employee.getEmployeeId());
-            if (salaryOpt.isEmpty()) {
+            Optional<PayrollRecord> payroll =
+                    payrollGenerationHelper.buildDraftIfEligible(employee, request.getPayrollMonth());
+
+            if (payroll.isPresent()) {
+                payrollRepository.save(payroll.get());
+                generated++;
+            } else {
                 skipped++;
-                continue;
             }
-
-            // Skip if payroll already exists for this month
-            boolean exists = payrollRepository.findByEmployeeEmployeeIdAndPayrollMonth(
-                    employee.getEmployeeId(), request.getPayrollMonth()).isPresent();
-            if (exists) {
-                skipped++;
-                continue;
-            }
-
-            PayrollCalculationResponse calculation = payrollCalculator.calculate(salaryOpt.get());
-
-            payrollRepository.save(PayrollRecord.builder()
-                    .employee(employee)
-                    .payrollMonth(request.getPayrollMonth())
-                    .grossSalary(calculation.getGrossSalary())
-                    .pfDeduction(calculation.getPfDeduction())
-                    .esiDeduction(calculation.getEsiDeduction())
-                    .taxDeduction(calculation.getTaxDeduction())
-                    .netSalary(calculation.getNetSalary())
-                    .status(PayrollStatus.DRAFT)
-                    .build());
-            generated++;
         }
 
         return GenerateMonthlyPayrollResponse.builder()

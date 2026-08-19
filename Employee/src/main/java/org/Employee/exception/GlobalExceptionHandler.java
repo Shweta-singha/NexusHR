@@ -2,6 +2,7 @@ package org.Employee.exception;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -28,6 +29,16 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(DuplicatePayrollException.class)
     public ResponseEntity<Map<String, Object>> handleDuplicatePayroll(DuplicatePayrollException ex) {
         return buildError(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
+    @ExceptionHandler(InvalidLeaveStateException.class)
+    public ResponseEntity<Map<String, Object>> handleInvalidLeaveState(InvalidLeaveStateException ex) {
+        return buildError(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
+    @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+    public ResponseEntity<Map<String, Object>> handleOptimisticLock(ObjectOptimisticLockingFailureException ex) {
+        return buildError(HttpStatus.CONFLICT, "Leave balance was updated concurrently, please retry.");
     }
 
     @ExceptionHandler(IllegalStateException.class)

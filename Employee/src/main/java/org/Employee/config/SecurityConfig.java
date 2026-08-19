@@ -22,12 +22,15 @@ public class SecurityConfig {
 
     private final CustomUserDetailsService customUserDetailsService;
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final RateLimitFilter rateLimitFilter;
 
     public SecurityConfig(
             CustomUserDetailsService customUserDetailsService,
-            JwtAuthenticationFilter jwtAuthenticationFilter) {
+            JwtAuthenticationFilter jwtAuthenticationFilter,
+            RateLimitFilter rateLimitFilter) {
         this.customUserDetailsService = customUserDetailsService;
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+        this.rateLimitFilter = rateLimitFilter;
     }
 
     @Bean
@@ -85,6 +88,8 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/leaves/apply").authenticated()
                 .requestMatchers(HttpMethod.GET, "/api/leaves/my").authenticated()
                 .requestMatchers(HttpMethod.GET, "/api/leaves/balance").authenticated()
+                .requestMatchers(HttpMethod.PUT, "/api/leaves/*/submit").authenticated()
+                .requestMatchers(HttpMethod.PUT, "/api/leaves/*/cancel").authenticated()
                 // Admin-only leave actions
                 .requestMatchers(HttpMethod.POST,
                     "/api/leaves/*/approve",
@@ -92,7 +97,8 @@ public class SecurityConfig {
                     .hasAnyRole("ADMIN", "HR_MANAGER")
                 .anyRequest().authenticated())
             .addFilterBefore(jwtAuthenticationFilter,
-                UsernamePasswordAuthenticationFilter.class);
+                UsernamePasswordAuthenticationFilter.class)
+            .addFilterBefore(rateLimitFilter, JwtAuthenticationFilter.class);
         return http.build();
     }
 }

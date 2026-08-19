@@ -20,6 +20,7 @@ import org.Employee.entity.LeaveAudit;
 import org.Employee.entity.LeaveBalance;
 import org.Employee.entity.LeaveType;
 import org.Employee.enums.LeaveStatus;
+import org.Employee.exception.InvalidLeaveStateException;
 import org.Employee.repository.EmployeeLeaveRepository;
 import org.Employee.repository.EmployeeRepository;
 import org.Employee.repository.LeaveAuditRepository;
@@ -27,6 +28,7 @@ import org.Employee.repository.LeaveBalanceRepository;
 import org.Employee.repository.LeaveTypeRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -73,29 +75,49 @@ public class LeaveServiceImpl implements LeaveService {
         LeaveType leaveType = leaveTypeRepository.findById(request.getLeaveTypeId())
                 .orElseThrow(() -> new RuntimeException("Leave type not found: " + request.getLeaveTypeId()));
 
-        long days = ChronoUnit.DAYS.between(request.getStartDate(), request.getEndDate()) + 1;
-
-        LeaveBalance balance = leaveBalanceRepository
-                .findByEmployeeEmployeeId(employee.getEmployeeId())
-                .orElseThrow(() -> new RuntimeException("Leave balance not found for employee: " + username));
-
-        checkBalance(balance, leaveType.getName(), days);
-
-        if (leaveRepository.existsOverlap(
-                employee.getEmployeeId(), request.getStartDate(), request.getEndDate())) {
-            throw new RuntimeException(
-                    "You already have a SUBMITTED or APPROVED leave that overlaps the requested date range");
-        }
-
         EmployeeLeave leave = new EmployeeLeave();
         leave.setEmployee(employee);
         leave.setLeaveType(leaveType);
         leave.setStartDate(request.getStartDate());
         leave.setEndDate(request.getEndDate());
         leave.setReason(request.getReason());
-        leave.setStatus(LeaveStatus.SUBMITTED);
+        leave.setStatus(LeaveStatus.DRAFT);
         leave.setAppliedAt(LocalDateTime.now());
 
+        return leaveRepository.save(leave);
+    }
+
+    @Transactional
+    @Override
+    public EmployeeLeave submitLeave(Long leaveId, String username) {
+        EmployeeLeave leave = leaveRepository.findByIdFetched(leaveId)
+                .orElseThrow(() -> new RuntimeException("Leave not found: " + leaveId));
+
+        if (!leave.getEmployee().getUsername().equals(username)) {
+            throw new AccessDeniedException("You can only submit your own leave");
+        }
+
+        if (leave.getStatus() != LeaveStatus.DRAFT) {
+            throw new InvalidLeaveStateException(
+                    "Only DRAFT leaves can be submitted. Current status: " + leave.getStatus());
+        }
+
+        long days = ChronoUnit.DAYS.between(leave.getStartDate(), leave.getEndDate()) + 1;
+        String leaveTypeName = leave.getLeaveType().getName();
+
+        LeaveBalance balance = leaveBalanceRepository
+                .findByEmployeeEmployeeId(leave.getEmployee().getEmployeeId())
+                .orElseThrow(() -> new RuntimeException("Leave balance not found for employee: " + username));
+
+        checkBalance(balance, leaveTypeName, days);
+
+        if (leaveRepository.existsOverlap(
+                leave.getEmployee().getEmployeeId(), leave.getStartDate(), leave.getEndDate())) {
+            throw new RuntimeException(
+                    "You already have a SUBMITTED or APPROVED leave that overlaps the requested date range");
+        }
+
+        leave.setStatus(LeaveStatus.SUBMITTED);
         return leaveRepository.save(leave);
     }
 
@@ -129,7 +151,7 @@ public class LeaveServiceImpl implements LeaveService {
                 .orElseThrow(() -> new RuntimeException("Leave not found: " + leaveId));
 
         if (leave.getStatus() != LeaveStatus.SUBMITTED) {
-            throw new RuntimeException(
+            throw new InvalidLeaveStateException(
                     "Only SUBMITTED leaves can be approved. Current status: " + leave.getStatus());
         }
 
@@ -161,7 +183,7 @@ public class LeaveServiceImpl implements LeaveService {
                 .orElseThrow(() -> new RuntimeException("Leave not found: " + leaveId));
 
         if (leave.getStatus() != LeaveStatus.SUBMITTED) {
-            throw new RuntimeException(
+            throw new InvalidLeaveStateException(
                     "Only SUBMITTED leaves can be rejected. Current status: " + leave.getStatus());
         }
 
@@ -183,6 +205,76 @@ public class LeaveServiceImpl implements LeaveService {
         }
 
         return leave;
+    }
+
+    @Transactional
+    @Override
+    public EmployeeLeave cancelLeave(Long leaveId, String username) {
+        EmployeeLeave leave = leaveRepository.findByIdFetched(leaveId)
+                .orElseThrow(() -> new RuntimeException("Leave not found: " + leaveId));
+
+        if (!leave.getEmployee().getUsername().equals(username)) {
+            throw new AccessDeniedException("You can only cancel your own leave");
+        }
+
+        if (leave.getStatus() != LeaveStatus.SUBMITTED && leave.getStatus() != LeaveStatus.APPROVED) {
+            throw new InvalidLeaveStateException(
+                    "Only SUBMITTED or APPROVED leaves can be cancelled. Current status: " + leave.getStatus());
+        }
+
+        boolean wasApproved = leave.getStatus() == LeaveStatus.APPROVED;
+
+        leave.setStatus(LeaveStatus.CANCELLED);
+        leaveRepository.save(leave);
+
+        if (wasApproved) {
+            creditBalance(leave);
+        }
+
+        logLeaveAction(leaveId, "CANCELLED", username);
+
+        return leave;
+    }
+
+    // TODO: year-end/period-end job, not yet scheduled. Once a year-end scheduler
+    // exists, this should move eligible leaves (e.g. APPROVED leaves whose cycle
+    // has ended) to LeaveStatus.CLOSED so they're excluded from future balance
+    // and carry-forward calculations.
+    public void closeLeaveCycle() {
+    }
+
+    /**
+     * Applies leave-type-aware carry-forward at period rollover: balances for
+     * types with carryForwardAllowed=true are left as-is, others reset to zero.
+     * Scoped for a future scheduled job - not wired to a scheduler yet.
+     */
+    @Transactional
+    @Override
+    public void carryForwardBalances() {
+        List<LeaveBalance> balances = leaveBalanceRepository.findAll();
+
+        boolean carryCasual = carryForwardAllowed("CASUAL");
+        boolean carrySick = carryForwardAllowed("SICK");
+        boolean carryEarned = carryForwardAllowed("EARNED");
+        boolean carryCompOff = carryForwardAllowed("COMP_OFF");
+
+        for (LeaveBalance balance : balances) {
+            if (!carryCasual) balance.setCasualBalance(0);
+            if (!carrySick) balance.setSickBalance(0);
+            if (!carryEarned) balance.setEarnedBalance(java.math.BigDecimal.ZERO);
+            if (!carryCompOff) balance.setCompOffBalance(0);
+        }
+
+        leaveBalanceRepository.saveAll(balances);
+
+        log.info("CARRY FORWARD APPLIED. Employees={} casualCarried={} sickCarried={} earnedCarried={} compOffCarried={}",
+                balances.size(), carryCasual, carrySick, carryEarned, carryCompOff);
+    }
+
+    private boolean carryForwardAllowed(String leaveTypeName) {
+        return leaveTypeRepository.findByName(leaveTypeName)
+                .map(LeaveType::getCarryForwardAllowed)
+                .orElse(false);
     }
 
     @Transactional(readOnly = true)
@@ -291,6 +383,25 @@ public class LeaveServiceImpl implements LeaveService {
             case "SICK"     -> balance.setSickBalance(balance.getSickBalance()       - (int) days);
             case "EARNED"   -> balance.setEarnedBalance(balance.getEarnedBalance().subtract(java.math.BigDecimal.valueOf(days)));
             case "COMP_OFF" -> balance.setCompOffBalance(balance.getCompOffBalance() - (int) days);
+            default -> throw new RuntimeException("Unknown leave type: " + leaveTypeName);
+        }
+
+        leaveBalanceRepository.save(balance);
+    }
+
+    private void creditBalance(EmployeeLeave leave) {
+        LeaveBalance balance = leaveBalanceRepository
+                .findByEmployeeEmployeeId(leave.getEmployee().getEmployeeId())
+                .orElseThrow(() -> new RuntimeException("Leave balance not found"));
+
+        long days = ChronoUnit.DAYS.between(leave.getStartDate(), leave.getEndDate()) + 1;
+        String leaveTypeName = leave.getLeaveType().getName();
+
+        switch (leaveTypeName) {
+            case "CASUAL"   -> balance.setCasualBalance(balance.getCasualBalance()   + (int) days);
+            case "SICK"     -> balance.setSickBalance(balance.getSickBalance()       + (int) days);
+            case "EARNED"   -> balance.setEarnedBalance(balance.getEarnedBalance().add(java.math.BigDecimal.valueOf(days)));
+            case "COMP_OFF" -> balance.setCompOffBalance(balance.getCompOffBalance() + (int) days);
             default -> throw new RuntimeException("Unknown leave type: " + leaveTypeName);
         }
 

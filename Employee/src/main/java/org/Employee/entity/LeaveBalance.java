@@ -27,6 +27,9 @@ public class LeaveBalance {
     @Column(name = "comp_off_balance")
     private Integer compOffBalance;
 
+    @Version
+    private Long version;
+
     public LeaveBalance() {}
 
     public Long getId() { return id; }
@@ -46,4 +49,6 @@ public class LeaveBalance {
 
     public Integer getCompOffBalance() { return compOffBalance; }
     public void setCompOffBalance(Integer compOffBalance) { this.compOffBalance = compOffBalance; }
+
+    public Long getVersion() { return version; }
 }

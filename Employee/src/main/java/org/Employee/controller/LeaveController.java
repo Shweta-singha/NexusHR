@@ -51,6 +51,24 @@ public class LeaveController {
         return ResponseEntity.ok(leaveService.getMyBalance(userDetails.getUsername()));
     }
 
+    @PutMapping("/{id}/submit")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<LeaveResponse> submitLeave(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        EmployeeLeave leave = leaveService.submitLeave(id, userDetails.getUsername());
+        return ResponseEntity.ok(toResponse(leave));
+    }
+
+    @PutMapping("/{id}/cancel")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<LeaveResponse> cancelLeave(
+            @PathVariable Long id,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        EmployeeLeave leave = leaveService.cancelLeave(id, userDetails.getUsername());
+        return ResponseEntity.ok(toResponse(leave));
+    }
+
     @PostMapping("/{id}/approve")
     @PreAuthorize("hasAnyRole('ADMIN','HR_MANAGER')")
     public LeaveResponse approveLeave(

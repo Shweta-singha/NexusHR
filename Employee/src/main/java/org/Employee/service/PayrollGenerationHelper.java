@@ -3,15 +3,21 @@ package org.Employee.service;
 import lombok.RequiredArgsConstructor;
 import org.Employee.dto.PayrollCalculationResponse;
 import org.Employee.entity.Employee;
+import org.Employee.entity.PayrollAudit;
 import org.Employee.entity.PayrollRecord;
 import org.Employee.entity.SalaryStructure;
 import org.Employee.enums.PayrollStatus;
+import org.Employee.repository.PayrollAuditRepository;
 import org.Employee.repository.PayrollRepository;
 import org.Employee.repository.SalaryStructureRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 @Component
@@ -23,12 +29,18 @@ public class PayrollGenerationHelper {
     private final SalaryStructureRepository salaryStructureRepository;
     private final PayrollRepository payrollRepository;
     private final PayrollCalculator payrollCalculator;
+    private final PayrollAuditRepository payrollAuditRepository;
 
     /**
-     * Builds a DRAFT PayrollRecord for the employee/month if eligible (no existing
-     * payroll for that month, and a salary structure is on file); empty otherwise.
-     * Does not persist - callers decide how/when to save.
+     * Builds, persists, and audits a DRAFT PayrollRecord for the employee/month if
+     * eligible (no existing payroll for that month, and a salary structure is on
+     * file); empty otherwise. Writes exactly one PayrollAudit "GENERATED" row per
+     * actual insert, never on a skip - PayrollAudit.payroll_id is a NOT NULL FK,
+     * so the audit row can only be written once the record has a real id, which is
+     * why persistence lives here now instead of with the caller. Callers must not
+     * save the returned record or write their own GENERATED audit row again.
      */
+    @Transactional
     public Optional<PayrollRecord> buildDraftIfEligible(Employee employee, String payrollMonth) {
         boolean payrollExists = payrollRepository
                 .findByEmployeeEmployeeIdAndPayrollMonth(employee.getEmployeeId(), payrollMonth)
@@ -61,9 +73,28 @@ public class PayrollGenerationHelper {
                 .status(PayrollStatus.DRAFT)
                 .build();
 
+        PayrollRecord saved = payrollRepository.save(payrollRecord);
+        logGenerated(saved.getId());
+
         log.info("Payroll calculated for employee {} | Gross: {} | Net: {}",
                 employee.getEmployeeId(), calculation.getGrossSalary(), calculation.getNetSalary());
 
-        return Optional.of(payrollRecord);
+        return Optional.of(saved);
+    }
+
+    private void logGenerated(Long payrollId) {
+        String performedBy = "SYSTEM";
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.isAuthenticated()
+                && !"anonymousUser".equals(authentication.getPrincipal())) {
+            performedBy = authentication.getName();
+        }
+
+        PayrollAudit audit = new PayrollAudit();
+        audit.setPayrollId(payrollId);
+        audit.setAction("GENERATED");
+        audit.setPerformedBy(performedBy);
+        audit.setPerformedAt(LocalDateTime.now());
+        payrollAuditRepository.save(audit);
     }
 }

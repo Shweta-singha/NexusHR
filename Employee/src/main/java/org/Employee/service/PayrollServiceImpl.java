@@ -6,18 +6,23 @@ import org.Employee.dto.GeneratePayrollRequest;
 import org.Employee.dto.GeneratePayrollResponse;
 import org.Employee.dto.PayrollCalculationResponse;
 import org.Employee.entity.Employee;
+import org.Employee.entity.PayrollAudit;
 import org.Employee.entity.PayrollRecord;
 import org.Employee.entity.SalaryStructure;
 import org.Employee.enums.PayrollStatus;
 import org.Employee.exception.DuplicatePayrollException;
 import org.Employee.exception.ResourceNotFoundException;
 import org.Employee.repository.EmployeeRepository;
+import org.Employee.repository.PayrollAuditRepository;
 import org.Employee.repository.PayrollRepository;
 import org.Employee.repository.SalaryStructureRepository;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 @Service
@@ -30,6 +35,7 @@ public class PayrollServiceImpl implements PayrollService {
     private final PayrollRepository payrollRepository;
     private final PayrollCalculator payrollCalculator;
     private final PayrollGenerationHelper payrollGenerationHelper;
+    private final PayrollAuditRepository payrollAuditRepository;
 
     @Override
     public GeneratePayrollResponse generatePayroll(GeneratePayrollRequest request) {
@@ -57,7 +63,9 @@ public class PayrollServiceImpl implements PayrollService {
                 .status(PayrollStatus.DRAFT)
                 .build();
 
-        return map(payrollRepository.save(payroll));
+        PayrollRecord saved = payrollRepository.save(payroll);
+        logPayrollAction(saved.getId(), "GENERATED");
+        return map(saved);
     }
     @Override
     @Transactional(readOnly = true)
@@ -82,7 +90,9 @@ public class PayrollServiceImpl implements PayrollService {
             throw new IllegalStateException("Only DRAFT payroll can be approved");
         }
         payroll.setStatus(PayrollStatus.APPROVED);
-        return map(payrollRepository.save(payroll));
+        PayrollRecord saved = payrollRepository.save(payroll);
+        logPayrollAction(saved.getId(), "APPROVED");
+        return map(saved);
     }
 
     @Override
@@ -92,7 +102,9 @@ public class PayrollServiceImpl implements PayrollService {
             throw new IllegalStateException("Only APPROVED payroll can be locked");
         }
         payroll.setStatus(PayrollStatus.LOCKED);
-        return map(payrollRepository.save(payroll));
+        PayrollRecord saved = payrollRepository.save(payroll);
+        logPayrollAction(saved.getId(), "LOCKED");
+        return map(saved);
     }
 
     @Override
@@ -102,7 +114,9 @@ public class PayrollServiceImpl implements PayrollService {
             throw new IllegalStateException("Only LOCKED payroll can be marked as PAID");
         }
         payroll.setStatus(PayrollStatus.PAID);
-        return map(payrollRepository.save(payroll));
+        PayrollRecord saved = payrollRepository.save(payroll);
+        logPayrollAction(saved.getId(), "PAID");
+        return map(saved);
     }
 
     @Override
@@ -116,7 +130,6 @@ public class PayrollServiceImpl implements PayrollService {
                     payrollGenerationHelper.buildDraftIfEligible(employee, request.getPayrollMonth());
 
             if (payroll.isPresent()) {
-                payrollRepository.save(payroll.get());
                 generated++;
             } else {
                 skipped++;
@@ -134,6 +147,22 @@ public class PayrollServiceImpl implements PayrollService {
     // -------------------------------------------------------------------------
     // Helpers
     // -------------------------------------------------------------------------
+
+    private void logPayrollAction(Long payrollId, String action) {
+        String performedBy = "SYSTEM";
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.isAuthenticated()
+                && !"anonymousUser".equals(authentication.getPrincipal())) {
+            performedBy = authentication.getName();
+        }
+
+        PayrollAudit audit = new PayrollAudit();
+        audit.setPayrollId(payrollId);
+        audit.setAction(action);
+        audit.setPerformedBy(performedBy);
+        audit.setPerformedAt(LocalDateTime.now());
+        payrollAuditRepository.save(audit);
+    }
 
     private PayrollRecord findById(Long payrollId) {
         return payrollRepository.findById(payrollId)

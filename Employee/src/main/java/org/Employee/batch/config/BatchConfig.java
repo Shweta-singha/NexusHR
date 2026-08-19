@@ -1,5 +1,6 @@
 package org.Employee.batch.config;
 
+import org.Employee.batch.listener.PayrollJobListener;
 import org.Employee.batch.processor.EmployeeLoggingProcessor;
 import org.Employee.batch.processor.PayrollProcessor;
 import org.Employee.batch.writer.EmployeeLoggingWriter;
@@ -82,13 +83,15 @@ public class BatchConfig {
     @Bean
     public Job payrollJob(
             JobRepository jobRepository,
-            Step payrollStep) {
+            Step payrollStep,
+            PayrollJobListener payrollJobListener) {
 
         return new JobBuilder(
                 "payrollJob",
                 jobRepository
         )
                 .start(payrollStep)
+                .listener(payrollJobListener)
                 .build();
     }
 }

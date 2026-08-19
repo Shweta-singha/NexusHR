@@ -11,13 +11,21 @@ import org.Employee.service.PayrollService;
 import org.Employee.service.PayslipEmailService;
 import org.Employee.service.PayslipService;
 import org.Employee.service.SalaryStructureService;
+import org.springframework.batch.core.Job;
+import org.springframework.batch.core.JobExecution;
+import org.springframework.batch.core.JobParameters;
+import org.springframework.batch.core.JobParametersBuilder;
+import org.springframework.batch.core.launch.JobLauncher;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/payroll")
@@ -27,15 +35,21 @@ public class PayrollController {
     private final PayrollService payrollService;
     private final PayslipService payslipService;
     private final PayslipEmailService payslipEmailService;
+    private final JobLauncher jobLauncher;
+    private final Job payrollJob;
 
     public PayrollController(SalaryStructureService salaryService,
                              PayrollService payrollService,
                              PayslipService payslipService,
-                             PayslipEmailService payslipEmailService) {
+                             PayslipEmailService payslipEmailService,
+                             JobLauncher jobLauncher,
+                             @Qualifier("payrollJob") Job payrollJob) {
         this.salaryService = salaryService;
         this.payrollService = payrollService;
         this.payslipService = payslipService;
         this.payslipEmailService = payslipEmailService;
+        this.jobLauncher = jobLauncher;
+        this.payrollJob = payrollJob;
     }
 
     @PostMapping("/salary-structure")
@@ -64,6 +78,30 @@ public class PayrollController {
     public GenerateMonthlyPayrollResponse generateMonthlyPayroll(
             @RequestBody GenerateMonthlyPayrollRequest request) {
         return payrollService.generateMonthlyPayroll(request);
+    }
+
+    @PostMapping("/batch/run")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Map<String, Object>> runPayrollBatch(
+            @RequestParam String payrollMonth) throws Exception {
+
+        if (payrollMonth == null || payrollMonth.isBlank()) {
+            throw new IllegalArgumentException("payrollMonth is required");
+        }
+
+        JobParameters parameters = new JobParametersBuilder()
+                .addString("payrollMonth", payrollMonth)
+                .addLong("timestamp", System.currentTimeMillis())
+                .toJobParameters();
+
+        JobExecution execution = jobLauncher.run(payrollJob, parameters);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("jobExecutionId", execution.getId());
+        response.put("jobName", execution.getJobInstance().getJobName());
+        response.put("status", execution.getStatus().toString());
+
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/{id}")

@@ -84,6 +84,16 @@ public class PayrollServiceImpl implements PayrollService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<GeneratePayrollResponse> getPayrollByMonth(String payrollMonth) {
+        return payrollRepository
+                .findByPayrollMonthOrderByEmployeeEmployeeId(payrollMonth)
+                .stream()
+                .map(this::map)
+                .toList();
+    }
+
+    @Override
     public GeneratePayrollResponse approvePayroll(Long payrollId) {
         PayrollRecord payroll = findById(payrollId);
         if (payroll.getStatus() != PayrollStatus.DRAFT) {

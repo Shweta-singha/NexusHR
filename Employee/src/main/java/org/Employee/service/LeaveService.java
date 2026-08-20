@@ -14,6 +14,8 @@ public interface LeaveService {
 
     List<EmployeeLeave> getMyLeaves(String username);
 
+    List<EmployeeLeave> getAllLeaves();
+
     EmployeeLeave approveLeave(Long leaveId, String managerUsername);
 
     EmployeeLeave rejectLeave(Long leaveId, String managerUsername, String reason);

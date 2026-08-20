@@ -23,8 +23,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final CustomUserDetailsService customUserDetailsService;
     private final StringRedisTemplate redisTemplate;
 
+    // Only the genuinely public auth endpoints - "/api/auth/" as a blanket
+    // prefix also skipped /api/auth/me and /api/auth/change-password, which
+    // both need SecurityContextHolder's Authentication populated to work.
     private static final List<String> EXCLUDED_PATHS = List.of(
-        "/api/auth/",
+        "/api/auth/register",
+        "/api/auth/login",
+        "/api/auth/refresh",
+        "/api/auth/logout",
+        "/api/auth/forgot-password",
+        "/api/auth/reset-password",
         "/v3/api-docs",
         "/swagger-ui",
         "/swagger-resources",

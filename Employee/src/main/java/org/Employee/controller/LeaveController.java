@@ -1,5 +1,6 @@
 package org.Employee.controller;
 
+import org.Employee.dto.AdminLeaveResponse;
 import org.Employee.dto.LeaveApplyRequest;
 import org.Employee.dto.LeaveBalanceResponse;
 import org.Employee.dto.LeaveResponse;
@@ -51,6 +52,14 @@ public class LeaveController {
         return ResponseEntity.ok(leaveService.getMyBalance(userDetails.getUsername()));
     }
 
+    @GetMapping("/all")
+    @PreAuthorize("hasAnyRole('ADMIN','HR_MANAGER')")
+    public ResponseEntity<List<AdminLeaveResponse>> allLeaves() {
+        List<AdminLeaveResponse> responses = leaveService.getAllLeaves()
+                .stream().map(this::toAdminResponse).toList();
+        return ResponseEntity.ok(responses);
+    }
+
     @PutMapping("/{id}/submit")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<LeaveResponse> submitLeave(
@@ -92,6 +101,22 @@ public class LeaveController {
     private LeaveResponse toResponse(EmployeeLeave leave) {
         LeaveResponse res = new LeaveResponse();
         res.setId(leave.getId());
+        res.setLeaveType(leave.getLeaveType().getName());
+        res.setStartDate(leave.getStartDate());
+        res.setEndDate(leave.getEndDate());
+        res.setTotalDays(ChronoUnit.DAYS.between(leave.getStartDate(), leave.getEndDate()) + 1);
+        res.setReason(leave.getReason());
+        res.setStatus(leave.getStatus());
+        res.setAppliedAt(leave.getAppliedAt());
+        res.setApprovedAt(leave.getApprovedAt());
+        res.setApprovedBy(leave.getApprovedBy());
+        return res;
+    }
+
+    private AdminLeaveResponse toAdminResponse(EmployeeLeave leave) {
+        AdminLeaveResponse res = new AdminLeaveResponse();
+        res.setId(leave.getId());
+        res.setEmployeeUsername(leave.getEmployee().getUsername());
         res.setLeaveType(leave.getLeaveType().getName());
         res.setStartDate(leave.getStartDate());
         res.setEndDate(leave.getEndDate());

@@ -5,6 +5,7 @@ import org.Employee.dto.ChangePasswordRequest;
 import org.Employee.dto.ForgotPasswordRequest;
 import org.Employee.dto.LoginRequest;
 import org.Employee.dto.LoginResponse;
+import org.Employee.dto.MeResponse;
 import org.Employee.dto.RefreshRequest;
 import org.Employee.dto.RegisterRequest;
 import org.Employee.dto.ResetPasswordRequest;
@@ -37,6 +38,21 @@ public class AuthenticationController {
     public ResponseEntity<LoginResponse> login(
             @RequestBody LoginRequest loginRequest) {
         return ResponseEntity.ok(authenticationService.login(loginRequest));
+    }
+
+    /**
+     * The frontend has nowhere else to learn the logged-in user's role from —
+     * LoginResponse doesn't carry it and it isn't embedded in the JWT — so
+     * this reads it straight off the authenticated request's granted
+     * authorities rather than hitting the DB again.
+     */
+    @GetMapping("/me")
+    public ResponseEntity<MeResponse> me(Authentication authentication) {
+        String role = authentication.getAuthorities().stream()
+                .findFirst()
+                .map(a -> a.getAuthority().replaceFirst("^ROLE_", ""))
+                .orElse("EMPLOYEE");
+        return ResponseEntity.ok(new MeResponse(authentication.getName(), role));
     }
 
     /**

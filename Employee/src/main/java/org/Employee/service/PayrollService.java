@@ -17,6 +17,8 @@ public interface PayrollService {
 
     List<GeneratePayrollResponse> getPayrollHistory(Long employeeId);
 
+    List<GeneratePayrollResponse> getPayrollByMonth(String payrollMonth);
+
     GeneratePayrollResponse approvePayroll(Long payrollId);
 
     GeneratePayrollResponse lockPayroll(Long payrollId);

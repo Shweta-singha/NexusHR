@@ -7,6 +7,8 @@ import org.Employee.dto.GeneratePayrollRequest;
 import org.Employee.dto.GeneratePayrollResponse;
 import org.Employee.dto.SalaryStructureRequest;
 import org.Employee.dto.SalaryStructureResponse;
+import org.Employee.entity.Employee;
+import org.Employee.repository.EmployeeRepository;
 import org.Employee.service.PayrollService;
 import org.Employee.service.PayslipEmailService;
 import org.Employee.service.PayslipService;
@@ -20,7 +22,10 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -37,19 +42,58 @@ public class PayrollController {
     private final PayslipEmailService payslipEmailService;
     private final JobLauncher jobLauncher;
     private final Job payrollJob;
+    private final EmployeeRepository employeeRepository;
 
     public PayrollController(SalaryStructureService salaryService,
                              PayrollService payrollService,
                              PayslipService payslipService,
                              PayslipEmailService payslipEmailService,
                              JobLauncher jobLauncher,
-                             @Qualifier("payrollJob") Job payrollJob) {
+                             @Qualifier("payrollJob") Job payrollJob,
+                             EmployeeRepository employeeRepository) {
         this.salaryService = salaryService;
         this.payrollService = payrollService;
         this.payslipService = payslipService;
         this.payslipEmailService = payslipEmailService;
         this.jobLauncher = jobLauncher;
         this.payrollJob = payrollJob;
+        this.employeeRepository = employeeRepository;
+    }
+
+    // Self-service — an employee viewing/downloading their own payslips.
+    // Every other payroll endpoint below is ADMIN/HR_MANAGER only.
+    @GetMapping("/my")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<List<GeneratePayrollResponse>> myPayrollHistory(
+            @AuthenticationPrincipal UserDetails userDetails) {
+        Long employeeId = resolveEmployeeId(userDetails.getUsername());
+        return ResponseEntity.ok(payrollService.getPayrollHistory(employeeId));
+    }
+
+    @GetMapping("/my/{payrollId}/payslip")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<byte[]> downloadMyPayslip(
+            @PathVariable Long payrollId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        Long employeeId = resolveEmployeeId(userDetails.getUsername());
+        GeneratePayrollResponse payroll = payrollService.getPayroll(payrollId);
+        if (!payroll.getEmployeeId().equals(employeeId)) {
+            throw new AccessDeniedException("You can only download your own payslip");
+        }
+
+        byte[] pdf = payslipService.generatePayslip(payrollId);
+        return ResponseEntity
+                .ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=payslip-" + payrollId + ".pdf")
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(pdf);
+    }
+
+    private Long resolveEmployeeId(String username) {
+        return employeeRepository.findByUsername(username)
+                .map(Employee::getEmployeeId)
+                .orElseThrow(() -> new RuntimeException("Employee not found: " + username));
     }
 
     @PostMapping("/salary-structure")
@@ -114,6 +158,12 @@ public class PayrollController {
     @PreAuthorize("hasAnyRole('ADMIN','HR_MANAGER')")
     public List<GeneratePayrollResponse> getPayrollHistory(@PathVariable Long employeeId) {
         return payrollService.getPayrollHistory(employeeId);
+    }
+
+    @GetMapping("/month/{payrollMonth}")
+    @PreAuthorize("hasAnyRole('ADMIN','HR_MANAGER')")
+    public List<GeneratePayrollResponse> getPayrollByMonth(@PathVariable String payrollMonth) {
+        return payrollService.getPayrollByMonth(payrollMonth);
     }
 
     @PutMapping("/{payrollId}/approve")

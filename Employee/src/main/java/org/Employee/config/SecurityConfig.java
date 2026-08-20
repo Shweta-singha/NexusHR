@@ -110,6 +110,7 @@ public class SecurityConfig {
                     "/webjars/**"
                 ).permitAll()
                 .requestMatchers(HttpMethod.PUT, "/api/auth/change-password").authenticated()
+                .requestMatchers(HttpMethod.GET, "/api/auth/me").authenticated()
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/debug", "/debug/token").permitAll()
                 // Employee self-service — any authenticated user can apply, view, check balance

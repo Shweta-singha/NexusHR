@@ -131,6 +131,12 @@ public class LeaveServiceImpl implements LeaveService {
 
     @Transactional(readOnly = true)
     @Override
+    public List<EmployeeLeave> getAllLeaves() {
+        return leaveRepository.findAllForReport();
+    }
+
+    @Transactional(readOnly = true)
+    @Override
     public LeaveBalanceResponse getMyBalance(String username) {
         Employee employee = employeeRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("Employee not found: " + username));

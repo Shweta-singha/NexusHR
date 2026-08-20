@@ -14,6 +14,10 @@
 
     <artifactId>Employee</artifactId>
 
+    <properties>
+        <testcontainers.version>1.21.4</testcontainers.version>
+    </properties>
+
     <dependencies>
 
         <dependency>
@@ -163,5 +167,21 @@
         </dependency>
 
     </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <!-- Some JVM/OS combinations resolve the local timezone to the
+                         deprecated alias "Asia/Calcutta" instead of "Asia/Kolkata",
+                         which minimal Postgres Testcontainers images don't recognize
+                         and reject at connect time. Pin the test JVM to UTC instead. -->
+                    <argLine>-Duser.timezone=UTC</argLine>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
 
 </project>

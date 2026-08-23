@@ -1,32 +1,28 @@
-# React + TypeScript + Vite
+# NexusHR Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+React frontend for NexusHR, talking to the Spring Boot backend in `../Employee`.
 
-Currently, two official plugins are available:
+## Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Vite + React 19 + TypeScript + TanStack Query + Tailwind v4 + React Router.
 
-## React Compiler
+## Local development
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```bash
+npm install
+npm run dev
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+Requires `VITE_API_BASE_URL` pointing at a running backend — see `.env.example`.
+
+## Modules
+
+- **Auth** — JWT login with refresh-token rotation, role-based route guards
+- **Employees / Departments** — paginated employee list, department hierarchy
+- **Attendance** — check-in/out, live SSE feed
+- **Leave** — draft → submit → cancel lifecycle, admin approval queue
+- **Payroll** — self-service payslip download, admin month view with approve/lock/pay actions
+
+## Deployment
+
+Deployed to Vercel with root directory `frontend`, auto-deploying on every push to `main`. The backend deploys separately to Render from `../Employee`.

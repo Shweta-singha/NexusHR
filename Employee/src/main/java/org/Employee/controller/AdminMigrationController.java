@@ -33,13 +33,26 @@ public class AdminMigrationController {
     @PostMapping(value = "/execute-sql", consumes = "text/plain")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<String> executeSql(@RequestBody String sql) {
-        jdbcTemplate.execute((java.sql.Connection conn) -> {
-            try (Statement stmt = conn.createStatement()) {
-                stmt.execute(sql);
+        try {
+            jdbcTemplate.execute((java.sql.Connection conn) -> {
+                try (Statement stmt = conn.createStatement()) {
+                    stmt.execute(sql);
+                }
+                return null;
+            });
+            return ResponseEntity.ok("Executed successfully");
+        } catch (Exception e) {
+            Throwable cause = e;
+            StringBuilder chain = new StringBuilder();
+            while (cause != null) {
+                chain.append(cause.getClass().getSimpleName())
+                        .append(": ")
+                        .append(cause.getMessage())
+                        .append("\n---\n");
+                cause = cause.getCause();
             }
-            return null;
-        });
-        return ResponseEntity.ok("Executed successfully");
+            return ResponseEntity.status(500).body(chain.toString());
+        }
     }
 
     @GetMapping("/verify")

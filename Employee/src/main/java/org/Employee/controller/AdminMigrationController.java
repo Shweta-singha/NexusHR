@@ -37,6 +37,12 @@ public class AdminMigrationController {
             jdbcTemplate.execute((java.sql.Connection conn) -> {
                 try (Statement stmt = conn.createStatement()) {
                     stmt.execute(sql);
+                } finally {
+                    // A dump's own SET search_path can otherwise leak into
+                    // this pooled connection for whatever request reuses it next.
+                    try (Statement reset = conn.createStatement()) {
+                        reset.execute("SET search_path = public");
+                    }
                 }
                 return null;
             });

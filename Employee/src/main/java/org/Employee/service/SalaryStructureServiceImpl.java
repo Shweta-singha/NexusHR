@@ -1,5 +1,6 @@
 package org.Employee.service;
 
+import org.Employee.audit.Auditable;
 import org.Employee.dto.SalaryStructureRequest;
 import org.Employee.dto.SalaryStructureResponse;
 import org.Employee.entity.Employee;
@@ -25,6 +26,7 @@ public class SalaryStructureServiceImpl implements SalaryStructureService {
     }
 
     @Override
+    @Auditable(entityType = "PAYROLL", action = "CREATE_SALARY_STRUCTURE")
     public SalaryStructureResponse createSalaryStructure(SalaryStructureRequest request) {
         salaryRepository.findByEmployeeEmployeeId(request.getEmployeeId())
                 .ifPresent(s -> { throw new DuplicateResourceException("Salary structure already exists"); });

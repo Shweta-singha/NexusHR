@@ -4,6 +4,7 @@ import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import org.Employee.audit.Auditable;
 import org.Employee.dto.AdminResetPasswordRequest;
 import org.Employee.dto.EmployeeDto;
 import org.Employee.dto.UpdateRoleRequest;
@@ -61,6 +62,7 @@ public class EmployeeServiceImpl implements EmployeeService, Serializable {
 
     @Override
     @CacheEvict(cacheNames = "employees", allEntries = true)
+    @Auditable(entityType = "EMPLOYEE", action = "CREATE")
     public Employee createEmployee(String username, String password, String email, String roleName) {
         Role role = resolveRole(roleName);
         Employee employee = new Employee();
@@ -92,6 +94,7 @@ public class EmployeeServiceImpl implements EmployeeService, Serializable {
 
     @Override
     @CacheEvict(cacheNames = "employees", allEntries = true)
+    @Auditable(entityType = "EMPLOYEE", action = "UPDATE")
     public Employee updateEmployee(Long id, String username, String password,
                                    String email, String roleName) {
         Employee employee = employeeRepository.findById(id)
@@ -105,6 +108,7 @@ public class EmployeeServiceImpl implements EmployeeService, Serializable {
 
     @Override
     @CacheEvict(cacheNames = "employees", allEntries = true)
+    @Auditable(entityType = "EMPLOYEE", action = "DELETE")
     public void deleteEmployee(Long id) {
         Employee employee = employeeRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Employee not found with id: " + id));
@@ -113,6 +117,7 @@ public class EmployeeServiceImpl implements EmployeeService, Serializable {
 
     @Override
     @Transactional
+    @Auditable(entityType = "EMPLOYEE", action = "UPDATE_ROLE")
     public EmployeeDto updateEmployeeRole(Long employeeId, UpdateRoleRequest request) {
         Employee employee = employeeRepository.findById(employeeId)
                 .orElseThrow(() -> new RuntimeException("Employee not found"));

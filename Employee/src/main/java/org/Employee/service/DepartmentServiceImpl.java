@@ -1,5 +1,6 @@
 package org.Employee.service;
 
+import org.Employee.audit.Auditable;
 import org.Employee.dto.BulkReassignmentRequest;
 import org.Employee.dto.BulkReassignmentResponse;
 import org.Employee.dto.CreateDepartmentRequest;
@@ -61,6 +62,7 @@ public class DepartmentServiceImpl implements DepartmentService {
 
     @Transactional
     @Override
+    @Auditable(entityType = "DEPARTMENT", action = "CREATE")
     public DepartmentResponse create(CreateDepartmentRequest request) {
         Department department = new Department();
         department.setName(request.getName());
@@ -83,6 +85,7 @@ public class DepartmentServiceImpl implements DepartmentService {
 
     @Transactional
     @Override
+    @Auditable(entityType = "DEPARTMENT", action = "DELETE")
     public void delete(Long id) {
         Department department = departmentRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Department not found: " + id));
@@ -121,6 +124,7 @@ public class DepartmentServiceImpl implements DepartmentService {
 
     @Transactional
     @Override
+    @Auditable(entityType = "DEPARTMENT", action = "REASSIGN")
     public BulkReassignmentResponse reassignEmployees(BulkReassignmentRequest request) {
         // Deduplicate to avoid moving the same employee twice
         Set<Long> uniqueIds = new HashSet<>(request.getEmployeeIds());

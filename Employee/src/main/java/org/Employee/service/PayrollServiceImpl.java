@@ -1,5 +1,6 @@
 package org.Employee.service;
 import lombok.RequiredArgsConstructor;
+import org.Employee.audit.Auditable;
 import org.Employee.dto.GenerateMonthlyPayrollRequest;
 import org.Employee.dto.GenerateMonthlyPayrollResponse;
 import org.Employee.dto.GeneratePayrollRequest;
@@ -38,6 +39,7 @@ public class PayrollServiceImpl implements PayrollService {
     private final PayrollAuditRepository payrollAuditRepository;
 
     @Override
+    @Auditable(entityType = "PAYROLL", action = "GENERATE")
     public GeneratePayrollResponse generatePayroll(GeneratePayrollRequest request) {
         Employee employee = employeeRepository.findById(request.getEmployeeId())
                 .orElseThrow(() -> new ResourceNotFoundException("Employee not found"));
@@ -94,6 +96,7 @@ public class PayrollServiceImpl implements PayrollService {
     }
 
     @Override
+    @Auditable(entityType = "PAYROLL", action = "APPROVE")
     public GeneratePayrollResponse approvePayroll(Long payrollId) {
         PayrollRecord payroll = findById(payrollId);
         if (payroll.getStatus() != PayrollStatus.DRAFT) {
@@ -106,6 +109,7 @@ public class PayrollServiceImpl implements PayrollService {
     }
 
     @Override
+    @Auditable(entityType = "PAYROLL", action = "LOCK")
     public GeneratePayrollResponse lockPayroll(Long payrollId) {
         PayrollRecord payroll = findById(payrollId);
         if (payroll.getStatus() != PayrollStatus.APPROVED) {
@@ -118,6 +122,7 @@ public class PayrollServiceImpl implements PayrollService {
     }
 
     @Override
+    @Auditable(entityType = "PAYROLL", action = "MARK_PAID")
     public GeneratePayrollResponse markPayrollPaid(Long payrollId) {
         PayrollRecord payroll = findById(payrollId);
         if (payroll.getStatus() != PayrollStatus.LOCKED) {
@@ -130,6 +135,7 @@ public class PayrollServiceImpl implements PayrollService {
     }
 
     @Override
+    @Auditable(entityType = "PAYROLL", action = "GENERATE_MONTHLY")
     public GenerateMonthlyPayrollResponse generateMonthlyPayroll(GenerateMonthlyPayrollRequest request) {
         List<Employee> employees = employeeRepository.findAll();
         int generated = 0;

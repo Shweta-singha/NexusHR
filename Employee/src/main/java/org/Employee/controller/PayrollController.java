@@ -166,6 +166,18 @@ public class PayrollController {
         return payrollService.getPayrollByMonth(payrollMonth);
     }
 
+    @GetMapping("/challan/{payrollMonth}")
+    @PreAuthorize("hasAnyRole('ADMIN','HR_MANAGER')")
+    public ResponseEntity<byte[]> downloadPfEsiChallan(@PathVariable String payrollMonth) {
+        byte[] excel = payrollService.generatePfEsiChallan(payrollMonth);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=pf-esi-challan-" + payrollMonth + ".xlsx")
+                .contentType(MediaType.parseMediaType(
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .body(excel);
+    }
+
     @PutMapping("/{payrollId}/approve")
     @PreAuthorize("hasAnyRole('ADMIN','HR_MANAGER')")
     public GeneratePayrollResponse approve(@PathVariable Long payrollId) {

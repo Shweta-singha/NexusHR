@@ -24,4 +24,6 @@ public interface PayrollService {
     GeneratePayrollResponse lockPayroll(Long payrollId);
 
     GeneratePayrollResponse markPayrollPaid(Long payrollId);
+
+    byte[] generatePfEsiChallan(String payrollMonth);
 }

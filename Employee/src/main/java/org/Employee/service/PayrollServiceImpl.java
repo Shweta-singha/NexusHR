@@ -17,12 +17,16 @@ import org.Employee.repository.EmployeeRepository;
 import org.Employee.repository.PayrollAuditRepository;
 import org.Employee.repository.PayrollRepository;
 import org.Employee.repository.SalaryStructureRepository;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-
+import java.io.ByteArrayOutputStream;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -158,6 +162,63 @@ public class PayrollServiceImpl implements PayrollService {
                 .generated(generated)
                 .skipped(skipped)
                 .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public byte[] generatePfEsiChallan(String payrollMonth) {
+        List<PayrollRecord> records = payrollRepository.findByPayrollMonthOrderByEmployeeEmployeeId(payrollMonth);
+
+        try {
+            Workbook workbook = new XSSFWorkbook();
+            Sheet sheet = workbook.createSheet("PF-ESI Challan " + payrollMonth);
+
+            Row header = sheet.createRow(0);
+            header.createCell(0).setCellValue("Employee Code");
+            header.createCell(1).setCellValue("Name");
+            header.createCell(2).setCellValue("Gross");
+            header.createCell(3).setCellValue("PF");
+            header.createCell(4).setCellValue("ESI");
+            header.createCell(5).setCellValue("Employer PF");
+            header.createCell(6).setCellValue("Employer ESI");
+
+            int rowNum = 1;
+            for (PayrollRecord record : records) {
+                Long employeeId = record.getEmployee().getEmployeeId();
+                double basicPay = salaryRepository.findByEmployeeEmployeeId(employeeId)
+                        .map(SalaryStructure::getBasicPay)
+                        .orElse(0.0);
+
+                // Employer-side PF/ESI aren't persisted anywhere - PayrollRecord
+                // only tracks the employee's own deductions. Computed here using
+                // the same statutory rates PayrollCalculator already uses for the
+                // employee side (12% of basic for PF; employer ESI is the
+                // standard 3.25% of gross, vs the employee's 0.75%).
+                double employerPf = basicPay * 0.12;
+                double employerEsi = record.getGrossSalary() * 0.0325;
+
+                Row row = sheet.createRow(rowNum++);
+                row.createCell(0).setCellValue(employeeId);
+                row.createCell(1).setCellValue(record.getEmployee().getUsername());
+                row.createCell(2).setCellValue(record.getGrossSalary());
+                row.createCell(3).setCellValue(record.getPfDeduction());
+                row.createCell(4).setCellValue(record.getEsiDeduction());
+                row.createCell(5).setCellValue(employerPf);
+                row.createCell(6).setCellValue(employerEsi);
+            }
+
+            for (int col = 0; col <= 6; col++) {
+                sheet.autoSizeColumn(col);
+            }
+
+            ByteArrayOutputStream output = new ByteArrayOutputStream();
+            workbook.write(output);
+            workbook.close();
+
+            return output.toByteArray();
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to generate PF/ESI challan", e);
+        }
     }
 
     // -------------------------------------------------------------------------

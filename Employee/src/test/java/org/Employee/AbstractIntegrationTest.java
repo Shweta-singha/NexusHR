@@ -4,25 +4,42 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
 /**
  * Shared Postgres + Redis containers for @SpringBootTest classes. Declared as
- * static fields on this base class (Testcontainers' singleton-container
- * pattern) so they start once per JVM and are reused across every subclass,
- * instead of each test class paying container-startup cost separately.
+ * static fields on this base class so they start once per JVM and are reused
+ * across every subclass, instead of each test class paying container-startup
+ * cost separately.
+ *
+ * Deliberately NOT using @Testcontainers + @Container here: that combo only
+ * guarantees reuse *within* one test class - JUnit5's @Testcontainers
+ * extension starts/stops per test class regardless of the static field being
+ * shared, so with multiple @SpringBootTest classes each one silently spun up
+ * its own fresh Postgres+Redis pair (confirmed via the logs: two containers,
+ * two different random ports, same JVM). That broke the *second*
+ * @SpringBootTest class's HikariPool outright (0 connections, request timed
+ * out) since its DataSource had already been wired to the first pair's
+ * connection details before those got torn down. Only surfaced today because
+ * this project had exactly one @SpringBootTest class before now - nothing
+ * ever exercised cross-class reuse until several were added. Starting the
+ * containers in a static initializer instead is the actual correct
+ * Testcontainers singleton pattern: no extension is managing their
+ * lifecycle, so nothing stops them between test classes. Ryuk (started
+ * automatically by Testcontainers, logs confirm it's active) still cleans
+ * them up when the JVM exits regardless.
  */
-@Testcontainers
 public abstract class AbstractIntegrationTest {
 
-    @Container
     static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16");
 
-    @Container
     static GenericContainer<?> redis =
             new GenericContainer<>(DockerImageName.parse("redis:7")).withExposedPorts(6379);
+
+    static {
+        postgres.start();
+        redis.start();
+    }
 
     @DynamicPropertySource
     static void overrideProperties(DynamicPropertyRegistry registry) {

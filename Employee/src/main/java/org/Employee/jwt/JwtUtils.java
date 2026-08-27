@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 
 import java.security.Key;
 import java.util.Date;
+import java.util.UUID;
 
 @Component
 public class JwtUtils {
@@ -44,6 +45,15 @@ public class JwtUtils {
     private String buildToken(String subject, long expirationMs, String type) {
         return Jwts.builder()
                 .setSubject(subject)
+                .setId(UUID.randomUUID().toString()) // jti - JWTs are otherwise
+                // fully deterministic given (subject, type, second-precision iat/exp),
+                // so two tokens issued for the same user+type within the same
+                // wall-clock second would be textually identical without this.
+                // That matters here specifically: refresh-token rotation revokes
+                // the old token by deleting its Redis entry keyed on the token
+                // string, then stores the "new" one under its own token-string
+                // key - if both strings were identical, that nets out to
+                // immediately re-validating the token that was just revoked.
                 .claim(TOKEN_TYPE_CLAIM, type)
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + expirationMs))

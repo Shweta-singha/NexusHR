@@ -32,6 +32,9 @@ public class BatchTestController {
     @Qualifier("payrollJob")
     private final Job payrollJob;
 
+    @Qualifier("attritionScoringJob")
+    private final Job attritionScoringJob;
+
     @PostMapping("/employee-reader")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Map<String, Object>> runEmployeeReader()
@@ -92,6 +95,45 @@ public class BatchTestController {
         JobExecution execution =
                 jobLauncher.run(
                         payrollJob,
+                        parameters
+                );
+
+        Map<String, Object> response = new HashMap<>();
+
+        response.put(
+                "jobExecutionId",
+                execution.getId()
+        );
+
+        response.put(
+                "jobName",
+                execution.getJobInstance().getJobName()
+        );
+
+        response.put(
+                "status",
+                execution.getStatus().toString()
+        );
+
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/attrition-scoring")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Map<String, Object>> runAttritionScoring()
+            throws Exception {
+
+        JobParameters parameters =
+                new JobParametersBuilder()
+                        .addLong(
+                                "timestamp",
+                                System.currentTimeMillis()
+                        )
+                        .toJobParameters();
+
+        JobExecution execution =
+                jobLauncher.run(
+                        attritionScoringJob,
                         parameters
                 );
 

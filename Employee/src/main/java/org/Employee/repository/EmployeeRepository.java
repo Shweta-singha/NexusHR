@@ -26,4 +26,15 @@ public interface EmployeeRepository
         """)
     long countByRoleName(@Param("roleName") String roleName);
 
+    // Selects the id/name directly rather than navigating
+    // employee.getDepartment() on an entity returned outside an open
+    // session (e.g. from a batch step's JpaPagingItemReader, with
+    // open-in-view=false) - Department is LAZY, so that navigation throws
+    // LazyInitializationException once the loading session is gone.
+    @Query("SELECT e.department.id FROM Employee e WHERE e.employeeId = :employeeId")
+    Optional<Long> findDepartmentIdByEmployeeId(@Param("employeeId") Long employeeId);
+
+    @Query("SELECT e.department.name FROM Employee e WHERE e.employeeId = :employeeId")
+    Optional<String> findDepartmentNameByEmployeeId(@Param("employeeId") Long employeeId);
+
 }

@@ -1,6 +1,7 @@
 package org.Employee.entity;
 
 import java.io.Serializable;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
@@ -41,6 +42,12 @@ public class Employee implements Serializable {
     @Column(name = "promoted_at")
     private LocalDateTime promotedAt;
 
+    // Added by V28 (Day 6); backfilled with fabricated dates for rows that
+    // predate that migration - see V28's comment. Mapped here now for the
+    // Day 8 attrition feature pipeline, which needs it to compute tenure.
+    @Column(name = "hire_date")
+    private LocalDate hireDate;
+
     public Employee() {}
 
     public Long getEmployeeId() { return employeeId; }
@@ -66,4 +73,7 @@ public class Employee implements Serializable {
 
     public LocalDateTime getPromotedAt() { return promotedAt; }
     public void setPromotedAt(LocalDateTime promotedAt) { this.promotedAt = promotedAt; }
+
+    public LocalDate getHireDate() { return hireDate; }
+    public void setHireDate(LocalDate hireDate) { this.hireDate = hireDate; }
 }

@@ -1,8 +1,11 @@
 package org.Employee.batch.config;
 
 import org.Employee.batch.listener.PayrollJobListener;
+import org.Employee.batch.processor.AttritionFeatureProcessor;
+import org.Employee.batch.processor.EmployeeAttritionFeatures;
 import org.Employee.batch.processor.EmployeeLoggingProcessor;
 import org.Employee.batch.processor.PayrollProcessor;
+import org.Employee.batch.writer.AttritionScoreWriter;
 import org.Employee.batch.writer.EmployeeLoggingWriter;
 import org.Employee.batch.writer.PayrollWriter;
 import org.Employee.entity.Employee;
@@ -92,6 +95,41 @@ public class BatchConfig {
         )
                 .start(payrollStep)
                 .listener(payrollJobListener)
+                .build();
+    }
+
+    @Bean
+    public Step attritionScoringStep(
+            JobRepository jobRepository,
+            PlatformTransactionManager transactionManager,
+            JpaPagingItemReader<Employee> employeeReader,
+            AttritionFeatureProcessor attritionFeatureProcessor,
+            AttritionScoreWriter attritionScoreWriter) {
+
+        return new StepBuilder(
+                "attritionScoringStep",
+                jobRepository
+        )
+                .<Employee, EmployeeAttritionFeatures>chunk(
+                        20,
+                        transactionManager
+                )
+                .reader(employeeReader)
+                .processor(attritionFeatureProcessor)
+                .writer(attritionScoreWriter)
+                .build();
+    }
+
+    @Bean
+    public Job attritionScoringJob(
+            JobRepository jobRepository,
+            Step attritionScoringStep) {
+
+        return new JobBuilder(
+                "attritionScoringJob",
+                jobRepository
+        )
+                .start(attritionScoringStep)
                 .build();
     }
 }

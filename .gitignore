@@ -9,3 +9,7 @@ target/
 .settings/
 *.log
 .env
+
+# Local-only pg_dump backups (e.g. taken before switching the local Postgres
+# image) - contain real local dev data, never committed
+db_backups/

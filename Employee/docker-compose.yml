@@ -3,7 +3,7 @@ version: '3.8'
 services:
 
   postgres:
-    image: postgres:16
+    image: pgvector/pgvector:pg17
     container_name: nexushr-postgres
 
     environment:
@@ -12,7 +12,15 @@ services:
       POSTGRES_PASSWORD: postgres
 
     ports:
-      - "5432:5432"
+      # Host-side port only - mapped to 5434 instead of 5432 because this
+      # machine also has a native Windows PostgreSQL install already bound
+      # to 5432 (holding this project's pre-pgvector local dev data; see
+      # db_backups/ for the pg_dump taken before this switch), and a
+      # different, unrelated project's Postgres container already using
+      # 5433. The 'app' service below is unaffected - it talks to this
+      # container over Docker's internal network on the container's own
+      # port 5432 regardless of what the host-side mapping is.
+      - "5434:5432"
 
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -22,7 +30,9 @@ services:
     container_name: nexushr-redis
 
     ports:
-      - "6379:6379"
+      # Host-side port only, same reasoning as postgres above - an unrelated
+      # project's Redis container already occupies 6379 on this machine.
+      - "6380:6379"
 
   app:
     build: .

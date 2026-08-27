@@ -31,7 +31,8 @@ import org.testcontainers.utility.DockerImageName;
  */
 public abstract class AbstractIntegrationTest {
 
-    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16");
+    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>(
+            DockerImageName.parse("pgvector/pgvector:pg17").asCompatibleSubstituteFor("postgres"));
 
     static GenericContainer<?> redis =
             new GenericContainer<>(DockerImageName.parse("redis:7")).withExposedPorts(6379);

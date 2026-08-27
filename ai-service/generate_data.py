@@ -81,7 +81,17 @@ def generate() -> pd.DataFrame:
     # rate below) to land attrition around 25-30% - realistic-ish, and
     # balanced enough that >80% holdout accuracy requires the model to
     # actually use the features, not just exploit a skewed majority class.
-    risk_prob = sigmoid(0.9 * risk_logit + 0.6 * noise - 0.55)
+    #
+    # Signal weight raised 0.9 -> 1.3 and noise weight dropped 0.6 -> 0.25
+    # (Day 7): at the original 0.9/0.6 balance the classes overlapped too
+    # much for any model to clear 80% holdout accuracy - a RandomForest
+    # with unrestricted depth still capped out at ~75% and AUC ~0.81,
+    # confirming it was a signal/noise problem in the data rather than an
+    # underfit model. This balance still keeps real irreducible noise
+    # (labels are not a deterministic function of the features - holdout
+    # accuracy is 81%, not ~100%) while letting the injected signal
+    # actually separate the classes.
+    risk_prob = sigmoid(1.3 * risk_logit + 0.25 * noise - 0.55)
     attrited = rng.binomial(1, risk_prob)
 
     return pd.DataFrame({

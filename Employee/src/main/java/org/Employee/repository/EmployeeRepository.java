@@ -17,6 +17,8 @@ public interface EmployeeRepository
 
     List<Employee> findAllByEmployeeIdIn(List<Long> employeeIds);
 
+    boolean existsByDepartmentId(Long departmentId);
+
     @Query("""
         SELECT COUNT(e)
         FROM Employee e

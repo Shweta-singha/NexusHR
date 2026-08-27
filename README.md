@@ -1,31 +1,42 @@
 # NexusHR
 
-NexusHR is a Spring Boot 3 / Java 21 HR management platform covering employee and department administration, attendance tracking with real-time updates, leave management, and payroll processing. It's built as a learning/demo project that leans on production-grade patterns — JWT authentication with Argon2id password hashing, Redis-backed refresh-token rotation, Spring Batch for payroll runs, optimistic locking on shared balances, and audit trails on sensitive state transitions — rather than toy shortcuts.
+NexusHR is a full-stack HR management platform covering employee and department administration, attendance tracking with real-time updates, leave management, payroll processing (including a PF/ESI statutory challan export), and basic performance management (goals + reviews). It's built as a learning/demo project that leans on production-grade patterns — JWT authentication with Argon2id password hashing, Redis-backed refresh-token rotation, Spring Batch for payroll runs, optimistic locking on shared balances, AOP-based audit trails on sensitive mutations, and a real Testcontainers-backed integration test suite — rather than toy shortcuts.
+
+**Live**: backend [`https://nexushr-vj7w.onrender.com`](https://nexushr-vj7w.onrender.com), frontend [`https://nexus-hr-gilt.vercel.app`](https://nexus-hr-gilt.vercel.app). Both auto-deploy on every push to `main`.
 
 ## Architecture
 
-- **Backend**: Spring Boot 3 (Employee module), Java 21.
-- **Database**: PostgreSQL 17, schema managed via Flyway migrations (`Employee/src/main/resources/db/migration`).
+- **Backend**: Spring Boot 3 (`Employee/` module), Java 21.
+- **Frontend**: React 19 + TypeScript + Vite (`frontend/` module), TanStack Query, Tailwind v4, React Router.
+- **Database**: PostgreSQL, schema managed via Flyway migrations (`Employee/src/main/resources/db/migration`).
 - **Cache / pub-sub**: Redis — session/refresh-token storage and real-time attendance events.
 - **Batch processing**: Spring Batch drives monthly payroll generation (listener, scheduler, and audit trail).
-- **Security**: Spring Security 6 + JWT (Argon2id password hashing, refresh-token rotation stored in Redis, per-IP rate limiting on auth endpoints).
-- **Real-time**: Server-Sent Events (SSE) for live attendance updates.
+- **Security**: Spring Security 6 + JWT (Argon2id password hashing, refresh-token rotation stored in Redis with a `jti` claim guaranteeing token uniqueness, per-IP rate limiting on auth endpoints — proxy-aware via `ForwardedHeaderFilter`, since the deployed backend sits behind Render/Cloudflare).
+- **Audit**: `@Auditable` AOP annotation + aspect records every Employee/Department/Payroll/Goal/Review mutation to an `audit_log` table (who, what, when).
+- **Testing**: JUnit5 + Mockito unit tests, plus real integration tests against Testcontainers-provisioned Postgres + Redis (shared across test classes via a static-initializer singleton, not `@Container`'s per-class lifecycle — see `AbstractIntegrationTest`'s comment for why that distinction matters).
+- **Real-time**: Server-Sent Events (SSE) for live attendance updates, via `@microsoft/fetch-event-source` on the frontend (native `EventSource` can't send the `Authorization` header this endpoint needs).
+- **Deployment**: Render (backend, Docker) + Vercel (frontend), both auto-deploying from `main`.
 
 ## Module Status
 
 | Module | Status | Notes |
 |---|---|---|
-| Auth | Done | JWT + Argon2id, refresh rotation in Redis, per-IP rate limiting on login/refresh (Day 3) |
-| Employee/Dept CRUD | Done | |
-| Attendance + SSE | Done | |
-| Leave | Done, hardening in progress | Day 3: optimistic locking on balances, cancelLeave, leave-type-aware carry-forward (unscheduled) |
-| Payroll batch | Hardening | Batch listener/scheduler/audit added Day 2; consolidated audit-write into the shared generation helper |
-| Performance Management | Not started | |
+| Auth | Done | JWT + Argon2id, refresh rotation in Redis, `jti`-guaranteed token uniqueness, per-IP rate limiting on login/refresh (proxy-aware) |
+| Employee/Dept CRUD | Done | Cascading deletes fixed (employee-referencing FKs now `ON DELETE CASCADE`); audited via `@Auditable` |
+| Attendance + SSE | Done | Live feed verified via real Playwright browser testing, including a genuine multi-client broadcast test |
+| Leave | Done | Optimistic locking on balances verified under genuine two-thread concurrency (`LeaveApprovalIntegrationTest`), draft→submit→approve/reject flow, audited |
+| Payroll | Done | Batch generation, approve/lock/pay lifecycle, self-service payslip download, PF/ESI challan Excel export, audited; batch job verified via a real `JobLauncherTestUtils` run against Testcontainers |
+| Performance Management | Done | Goals (self-service CRUD) + Performance Reviews (manager/admin-authored, 1–5 rating), modeled on the Department module's structure |
+| Frontend | Done | Auth, Employees/Departments, Attendance, Leave, Payroll — all 5 modules with a working backend; deployed to Vercel with SPA routing fixed |
+| Deployment | Done | Backend on Render, frontend on Vercel, both live and auto-deploying on push; local data migrated to Render's Postgres |
+| Test suite | Done | 3 integration test classes (payroll batch, leave approval + concurrency, auth flow) + 5 unit test classes (29 tests total, all passing) |
+| Postman collection | Done | `postman/NexusHR.postman_collection.json` — auth, employee, attendance, leave, payroll flows |
 | AI attrition + RAG | Not started | |
-| Frontend | Not started | |
-| Kubernetes/EKS | Not started | |
+| Kubernetes/EKS | Not started | Render/Vercel is the live deployment target; EKS was an earlier plan not yet pursued |
 
 ## Local Run
+
+### Backend
 
 1. Start Postgres and Redis:
    ```
@@ -44,10 +55,28 @@ NexusHR is a Spring Boot 3 / Java 21 HR management platform covering employee an
 
 To run the whole stack (app included) in Docker, `docker-compose up` from `Employee/` — the compose file passes `JWT_SECRET_KEY` through from your shell/`.env`, so it still needs to be set in your environment first.
 
+### Frontend
+
+```
+cd frontend
+npm install
+npm run dev
+```
+
+Requires `VITE_API_BASE_URL` pointing at a running backend (`frontend/.env.example`).
+
+### Tests
+
+```
+cd Employee
+mvn test
+```
+
+Integration tests need Docker running (Testcontainers provisions Postgres + Redis automatically — no manual setup needed, and no port conflicts with the `docker-compose` services above since Testcontainers uses random host ports).
+
 ## Known Limitations
 
-This section is a stub, to be filled in as hardening continues over the remaining days. Known gaps so far:
-
 - `RateLimitFilter`'s token buckets are in-memory per app instance — not shared across multiple instances behind a load balancer, and reset on restart.
-- `LeaveServiceImpl.carryForwardBalances()` and `closeLeaveCycle()` exist but aren't wired to any scheduler yet.
-- No frontend exists yet; all modules are API-only.
+- `LeaveServiceImpl.carryForwardBalances()` and `closeLeaveCycle()` exist but are still unwired dead code — not called from anywhere. This is separate from `LeaveScheduler`, which *is* actually wired via `@Scheduled` cron jobs (monthly earned-leave accrual, year-end carry-forward with a 10-day cap) and covers similar ground with different logic.
+- PF/ESI challan export computes employer-side PF/ESI contributions from the employee's *current* salary structure at export time (not persisted anywhere on the payroll record itself). If a salary structure is revised after a payroll record was generated, the challan's employer columns reflect the current structure while the employee PF/ESI columns still reflect what was locked in at generation time.
+- Render's free tier spins down on inactivity — the first request after idle time can take 10–90+ seconds (cold start) before the backend responds.

@@ -1,0 +1,608 @@
+{
+  "info": {
+    "name": "NexusHR",
+    "description": "Auth, Employee, Department, Attendance, Leave, and Payroll flows against the NexusHR API. Set `base_url` to http://localhost:8081 for local, or https://nexushr-vj7w.onrender.com for the live deployment. Run 'Login' first — it auto-captures access_token/refresh_token into collection variables that every other request inherits as a Bearer token.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{access_token}}", "type": "string" }]
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:8081", "type": "string" },
+    { "key": "access_token", "value": "", "type": "string" },
+    { "key": "refresh_token", "value": "", "type": "string" },
+    { "key": "employee_id", "value": "", "type": "string" },
+    { "key": "department_id", "value": "", "type": "string" },
+    { "key": "leave_id", "value": "", "type": "string" },
+    { "key": "payroll_id", "value": "", "type": "string" },
+    { "key": "goal_id", "value": "", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"postman-demo-user\",\n  \"password\": \"PostmanDemo@2026\",\n  \"email\": \"postman-demo@example.com\",\n  \"role\": \"ADMIN\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/api/auth/register", "host": ["{{base_url}}"], "path": ["api", "auth", "register"] }
+          }
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set('access_token', body.token);",
+                  "pm.collectionVariables.set('refresh_token', body.refreshToken);",
+                  "pm.test('login returned tokens', () => { pm.expect(body.token).to.be.a('string'); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"postman-demo-user\",\n  \"password\": \"PostmanDemo@2026\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/api/auth/login", "host": ["{{base_url}}"], "path": ["api", "auth", "login"] }
+          }
+        },
+        {
+          "name": "Refresh",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set('access_token', body.token);",
+                  "pm.collectionVariables.set('refresh_token', body.refreshToken);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"refreshToken\": \"{{refresh_token}}\"\n}" },
+            "url": { "raw": "{{base_url}}/api/auth/refresh", "host": ["{{base_url}}"], "path": ["api", "auth", "refresh"] }
+          }
+        },
+        {
+          "name": "Me",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/auth/me", "host": ["{{base_url}}"], "path": ["api", "auth", "me"] }
+          }
+        },
+        {
+          "name": "Change Password",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"oldPassword\": \"PostmanDemo@2026\",\n  \"newPassword\": \"PostmanDemo@2027\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/api/auth/change-password", "host": ["{{base_url}}"], "path": ["api", "auth", "change-password"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Employee",
+      "item": [
+        {
+          "name": "Create Employee",
+          "event": [
+            {
+              "listen": "test",
+              "script": { "exec": ["const body = pm.response.json();", "if (body.id) pm.collectionVariables.set('employee_id', body.id);"], "type": "text/javascript" }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"postman-new-employee\",\n  \"password\": \"NewEmployee@2026\",\n  \"email\": \"postman-new-employee@example.com\",\n  \"role\": \"EMPLOYEE\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/api/employee/createEmployee", "host": ["{{base_url}}"], "path": ["api", "employee", "createEmployee"] }
+          }
+        },
+        {
+          "name": "Get All Employees (paginated)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/employee/all?page=0&size=10",
+              "host": ["{{base_url}}"], "path": ["api", "employee", "all"],
+              "query": [{ "key": "page", "value": "0" }, { "key": "size", "value": "10" }]
+            }
+          }
+        },
+        {
+          "name": "Get Employee By Id",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/employee/{{employee_id}}", "host": ["{{base_url}}"], "path": ["api", "employee", "{{employee_id}}"] }
+          }
+        },
+        {
+          "name": "Update Employee",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"postman-new-employee\",\n  \"password\": \"NewEmployee@2027\",\n  \"email\": \"postman-new-employee@example.com\",\n  \"role\": \"EMPLOYEE\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/api/employee/update/{{employee_id}}", "host": ["{{base_url}}"], "path": ["api", "employee", "update", "{{employee_id}}"] }
+          }
+        },
+        {
+          "name": "Update Employee Role (Admin)",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"roleName\": \"HR_MANAGER\"\n}" },
+            "url": { "raw": "{{base_url}}/api/admin/employees/{{employee_id}}/role", "host": ["{{base_url}}"], "path": ["api", "admin", "employees", "{{employee_id}}", "role"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Department",
+      "item": [
+        {
+          "name": "Create Department",
+          "event": [
+            {
+              "listen": "test",
+              "script": { "exec": ["const body = pm.response.json();", "if (body.id) pm.collectionVariables.set('department_id', body.id);"], "type": "text/javascript" }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Postman Demo Dept\",\n  \"parentDepartmentId\": null\n}" },
+            "url": { "raw": "{{base_url}}/api/departments", "host": ["{{base_url}}"], "path": ["api", "departments"] }
+          }
+        },
+        {
+          "name": "Get Hierarchy",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/departments/hierarchy", "host": ["{{base_url}}"], "path": ["api", "departments", "hierarchy"] }
+          }
+        },
+        {
+          "name": "Get Org Chart (Admin/HR)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/departments/org-chart", "host": ["{{base_url}}"], "path": ["api", "departments", "org-chart"] }
+          }
+        },
+        {
+          "name": "Bulk Reassign Employees",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"employeeIds\": [{{employee_id}}],\n  \"targetDepartmentId\": {{department_id}}\n}"
+            },
+            "url": { "raw": "{{base_url}}/api/departments/reassign", "host": ["{{base_url}}"], "path": ["api", "departments", "reassign"] }
+          }
+        },
+        {
+          "name": "Delete Department",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{base_url}}/api/departments/{{department_id}}", "host": ["{{base_url}}"], "path": ["api", "departments", "{{department_id}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Attendance",
+      "item": [
+        {
+          "name": "Check In",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{base_url}}/api/attendance/check-in", "host": ["{{base_url}}"], "path": ["api", "attendance", "check-in"] }
+          }
+        },
+        {
+          "name": "Check Out",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{base_url}}/api/attendance/check-out", "host": ["{{base_url}}"], "path": ["api", "attendance", "check-out"] }
+          }
+        },
+        {
+          "name": "My Attendance",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/attendance/my", "host": ["{{base_url}}"], "path": ["api", "attendance", "my"] }
+          }
+        },
+        {
+          "name": "My Attendance By Range",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/attendance/my/range?from=2026-08-01&to=2026-08-31",
+              "host": ["{{base_url}}"], "path": ["api", "attendance", "my", "range"],
+              "query": [{ "key": "from", "value": "2026-08-01" }, { "key": "to", "value": "2026-08-31" }]
+            }
+          }
+        },
+        {
+          "name": "All Attendance By Range (Admin/HR)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/attendance/all?from=2026-08-01&to=2026-08-31",
+              "host": ["{{base_url}}"], "path": ["api", "attendance", "all"],
+              "query": [{ "key": "from", "value": "2026-08-01" }, { "key": "to", "value": "2026-08-31" }]
+            }
+          }
+        },
+        {
+          "name": "Summary (Admin/HR)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/attendance/summary", "host": ["{{base_url}}"], "path": ["api", "attendance", "summary"] }
+          }
+        },
+        {
+          "name": "Live Stream (SSE)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "text/event-stream" }],
+            "url": { "raw": "{{base_url}}/api/attendance/stream", "host": ["{{base_url}}"], "path": ["api", "attendance", "stream"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Leave",
+      "item": [
+        {
+          "name": "Get Leave Types",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/leave-types", "host": ["{{base_url}}"], "path": ["api", "leave-types"] }
+          }
+        },
+        {
+          "name": "My Balance",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/leaves/balance", "host": ["{{base_url}}"], "path": ["api", "leaves", "balance"] }
+          }
+        },
+        {
+          "name": "Apply (Draft)",
+          "event": [
+            {
+              "listen": "test",
+              "script": { "exec": ["const body = pm.response.json();", "if (body.id) pm.collectionVariables.set('leave_id', body.id);"], "type": "text/javascript" }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"leaveTypeId\": 1,\n  \"startDate\": \"2027-01-10\",\n  \"endDate\": \"2027-01-11\",\n  \"reason\": \"Postman demo\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/api/leaves/apply", "host": ["{{base_url}}"], "path": ["api", "leaves", "apply"] }
+          }
+        },
+        {
+          "name": "Submit",
+          "request": {
+            "method": "PUT",
+            "url": { "raw": "{{base_url}}/api/leaves/{{leave_id}}/submit", "host": ["{{base_url}}"], "path": ["api", "leaves", "{{leave_id}}", "submit"] }
+          }
+        },
+        {
+          "name": "My Leaves",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/leaves/my", "host": ["{{base_url}}"], "path": ["api", "leaves", "my"] }
+          }
+        },
+        {
+          "name": "All Leaves (Admin/HR)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/leaves/all", "host": ["{{base_url}}"], "path": ["api", "leaves", "all"] }
+          }
+        },
+        {
+          "name": "Approve (Admin/HR)",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{base_url}}/api/leaves/{{leave_id}}/approve", "host": ["{{base_url}}"], "path": ["api", "leaves", "{{leave_id}}", "approve"] }
+          }
+        },
+        {
+          "name": "Reject (Admin/HR)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"reason\": \"Postman demo rejection\"\n}" },
+            "url": { "raw": "{{base_url}}/api/leaves/{{leave_id}}/reject", "host": ["{{base_url}}"], "path": ["api", "leaves", "{{leave_id}}", "reject"] }
+          }
+        },
+        {
+          "name": "Cancel",
+          "request": {
+            "method": "PUT",
+            "url": { "raw": "{{base_url}}/api/leaves/{{leave_id}}/cancel", "host": ["{{base_url}}"], "path": ["api", "leaves", "{{leave_id}}", "cancel"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Payroll",
+      "item": [
+        {
+          "name": "Create Salary Structure (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"employeeId\": {{employee_id}},\n  \"basicPay\": 30000,\n  \"hra\": 10000,\n  \"specialAllowance\": 5000,\n  \"conveyanceAllowance\": 2000,\n  \"medicalAllowance\": 1500,\n  \"bonus\": 1500\n}"
+            },
+            "url": { "raw": "{{base_url}}/api/payroll/salary-structure", "host": ["{{base_url}}"], "path": ["api", "payroll", "salary-structure"] }
+          }
+        },
+        {
+          "name": "Get Salary Structure (Admin/HR)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/payroll/salary-structure/{{employee_id}}", "host": ["{{base_url}}"], "path": ["api", "payroll", "salary-structure", "{{employee_id}}"] }
+          }
+        },
+        {
+          "name": "Generate Payroll (Admin/HR)",
+          "event": [
+            {
+              "listen": "test",
+              "script": { "exec": ["const body = pm.response.json();", "if (body.payrollId) pm.collectionVariables.set('payroll_id', body.payrollId);"], "type": "text/javascript" }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"employeeId\": {{employee_id}},\n  \"payrollMonth\": \"2027-01\"\n}" },
+            "url": { "raw": "{{base_url}}/api/payroll/generate", "host": ["{{base_url}}"], "path": ["api", "payroll", "generate"] }
+          }
+        },
+        {
+          "name": "Generate Monthly (All Employees, Admin/HR)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"payrollMonth\": \"2027-01\"\n}" },
+            "url": { "raw": "{{base_url}}/api/payroll/generate/monthly", "host": ["{{base_url}}"], "path": ["api", "payroll", "generate", "monthly"] }
+          }
+        },
+        {
+          "name": "Run Batch Job (Admin)",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{base_url}}/api/payroll/batch/run?payrollMonth=2027-01",
+              "host": ["{{base_url}}"], "path": ["api", "payroll", "batch", "run"],
+              "query": [{ "key": "payrollMonth", "value": "2027-01" }]
+            }
+          }
+        },
+        {
+          "name": "Get Payroll By Id (Admin/HR)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/payroll/{{payroll_id}}", "host": ["{{base_url}}"], "path": ["api", "payroll", "{{payroll_id}}"] }
+          }
+        },
+        {
+          "name": "Get Payroll History (Admin/HR)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/payroll/history/{{employee_id}}", "host": ["{{base_url}}"], "path": ["api", "payroll", "history", "{{employee_id}}"] }
+          }
+        },
+        {
+          "name": "Get Payroll By Month (Admin/HR)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/payroll/month/2027-01", "host": ["{{base_url}}"], "path": ["api", "payroll", "month", "2027-01"] }
+          }
+        },
+        {
+          "name": "Approve (Admin/HR)",
+          "request": {
+            "method": "PUT",
+            "url": { "raw": "{{base_url}}/api/payroll/{{payroll_id}}/approve", "host": ["{{base_url}}"], "path": ["api", "payroll", "{{payroll_id}}", "approve"] }
+          }
+        },
+        {
+          "name": "Lock (Admin)",
+          "request": {
+            "method": "PUT",
+            "url": { "raw": "{{base_url}}/api/payroll/{{payroll_id}}/lock", "host": ["{{base_url}}"], "path": ["api", "payroll", "{{payroll_id}}", "lock"] }
+          }
+        },
+        {
+          "name": "Mark Paid (Admin)",
+          "request": {
+            "method": "PUT",
+            "url": { "raw": "{{base_url}}/api/payroll/{{payroll_id}}/paid", "host": ["{{base_url}}"], "path": ["api", "payroll", "{{payroll_id}}", "paid"] }
+          }
+        },
+        {
+          "name": "My Payroll History",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/payroll/my", "host": ["{{base_url}}"], "path": ["api", "payroll", "my"] }
+          }
+        },
+        {
+          "name": "My Payslip PDF",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/payroll/my/{{payroll_id}}/payslip", "host": ["{{base_url}}"], "path": ["api", "payroll", "my", "{{payroll_id}}", "payslip"] }
+          }
+        },
+        {
+          "name": "Payslip PDF (Admin/HR)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/payroll/{{payroll_id}}/payslip", "host": ["{{base_url}}"], "path": ["api", "payroll", "{{payroll_id}}", "payslip"] }
+          }
+        },
+        {
+          "name": "PF/ESI Challan Excel (Admin/HR)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/payroll/challan/2027-01", "host": ["{{base_url}}"], "path": ["api", "payroll", "challan", "2027-01"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Performance Management",
+      "item": [
+        {
+          "name": "Create Goal",
+          "event": [
+            {
+              "listen": "test",
+              "script": { "exec": ["const body = pm.response.json();", "if (body.id) pm.collectionVariables.set('goal_id', body.id);"], "type": "text/javascript" }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Postman demo goal\",\n  \"description\": \"Created via the Postman collection\",\n  \"targetDate\": \"2027-06-30\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/api/goals", "host": ["{{base_url}}"], "path": ["api", "goals"] }
+          }
+        },
+        {
+          "name": "My Goals",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/goals", "host": ["{{base_url}}"], "path": ["api", "goals"] }
+          }
+        },
+        {
+          "name": "Update Goal",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"status\": \"IN_PROGRESS\"\n}" },
+            "url": { "raw": "{{base_url}}/api/goals/{{goal_id}}", "host": ["{{base_url}}"], "path": ["api", "goals", "{{goal_id}}"] }
+          }
+        },
+        {
+          "name": "Create Review (Admin/HR/Manager)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"employeeId\": {{employee_id}},\n  \"reviewPeriod\": \"2027-Q1\",\n  \"rating\": 4,\n  \"comments\": \"Postman demo review\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/api/reviews", "host": ["{{base_url}}"], "path": ["api", "reviews"] }
+          }
+        },
+        {
+          "name": "Get Reviews By Employee (Admin/HR/Manager)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/reviews/employee/{{employee_id}}", "host": ["{{base_url}}"], "path": ["api", "reviews", "employee", "{{employee_id}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Reports",
+      "item": [
+        {
+          "name": "Attendance PDF (Admin/HR)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/reports/attendance/pdf", "host": ["{{base_url}}"], "path": ["api", "reports", "attendance", "pdf"] }
+          }
+        },
+        {
+          "name": "Attendance Excel (Admin/HR)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/reports/attendance/excel", "host": ["{{base_url}}"], "path": ["api", "reports", "attendance", "excel"] }
+          }
+        },
+        {
+          "name": "Leave PDF (Admin/HR)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/reports/leaves/pdf", "host": ["{{base_url}}"], "path": ["api", "reports", "leaves", "pdf"] }
+          }
+        },
+        {
+          "name": "Leave Excel (Admin/HR)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/reports/leaves/excel", "host": ["{{base_url}}"], "path": ["api", "reports", "leaves", "excel"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Cleanup",
+      "description": "Run last, not mid-sequence: Delete Employee and Logout both end a session other folders depend on (Department/Payroll/Reviews all reference employee_id; every request after Logout needs a valid access_token).",
+      "item": [
+        {
+          "name": "Delete Employee",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{base_url}}/api/employee/delete/{{employee_id}}", "host": ["{{base_url}}"], "path": ["api", "employee", "delete", "{{employee_id}}"] }
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"refreshToken\": \"{{refresh_token}}\"\n}" },
+            "url": { "raw": "{{base_url}}/api/auth/logout", "host": ["{{base_url}}"], "path": ["api", "auth", "logout"] }
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -93,6 +93,10 @@ public class DepartmentServiceImpl implements DepartmentService {
             throw new RuntimeException(
                     "Cannot delete department with sub-departments. Reassign or delete children first.");
         }
+        if (employeeRepository.existsByDepartmentId(id)) {
+            throw new RuntimeException(
+                    "Cannot delete department with employees assigned. Reassign them first.");
+        }
         departmentRepository.delete(department);
     }
 

@@ -20,10 +20,10 @@ export default function AdminLeaveQueue() {
 
   return (
     <div className="mt-8">
-      <h3 className="mb-3 font-semibold text-slate-900">Approval Queue ({pending.length} pending)</h3>
-      <table className="w-full border-collapse overflow-hidden rounded-lg border border-slate-200 bg-white text-sm">
+      <h3 className="mb-3 font-semibold text-slate-900 dark:text-slate-100">Approval Queue ({pending.length} pending)</h3>
+      <table className="w-full border-collapse overflow-hidden rounded-lg border border-slate-200 bg-white text-sm dark:border-slate-700 dark:bg-slate-800">
         <thead>
-          <tr className="border-b border-slate-200 bg-slate-50 text-left text-slate-600">
+          <tr className="border-b border-slate-200 bg-slate-50 text-left text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">
             <th className="px-4 py-2 font-medium">Employee</th>
             <th className="px-4 py-2 font-medium">Type</th>
             <th className="px-4 py-2 font-medium">Dates</th>
@@ -33,23 +33,25 @@ export default function AdminLeaveQueue() {
         </thead>
         <tbody>
           {pending.map((leave) => (
-            <tr key={leave.id} className="border-b border-slate-100 last:border-0">
-              <td className="px-4 py-2 text-slate-900">{leave.employeeUsername}</td>
-              <td className="px-4 py-2 text-slate-600">{leave.leaveType}</td>
-              <td className="px-4 py-2 text-slate-600">
+            <tr key={leave.id} className="border-b border-slate-100 last:border-0 dark:border-slate-800">
+              <td className="px-4 py-2 text-slate-900 dark:text-slate-100">{leave.employeeUsername}</td>
+              <td className="px-4 py-2 text-slate-600 dark:text-slate-400">{leave.leaveType}</td>
+              <td className="px-4 py-2 text-slate-600 dark:text-slate-400">
                 {leave.startDate} → {leave.endDate}
               </td>
-              <td className="px-4 py-2 text-slate-600">{leave.reason}</td>
+              <td className="px-4 py-2 text-slate-600 dark:text-slate-400">{leave.reason}</td>
               <td className="px-4 py-2 space-x-2">
                 <button
                   onClick={() => approveMutation.mutate(leave.id)}
-                  className="rounded-md bg-slate-900 px-2 py-1 text-xs text-white hover:bg-slate-800"
+                  aria-label={`Approve leave for ${leave.employeeUsername}`}
+                  className="rounded-md bg-slate-900 px-2 py-1 text-xs text-white hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-300"
                 >
                   Approve
                 </button>
                 <button
                   onClick={() => rejectMutation.mutate(leave.id)}
-                  className="rounded-md border border-slate-300 px-2 py-1 text-xs hover:bg-slate-100"
+                  aria-label={`Reject leave for ${leave.employeeUsername}`}
+                  className="rounded-md border border-slate-300 px-2 py-1 text-xs hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500 dark:border-slate-600 dark:hover:bg-slate-700"
                 >
                   Reject
                 </button>
@@ -58,7 +60,7 @@ export default function AdminLeaveQueue() {
           ))}
           {pending.length === 0 && (
             <tr>
-              <td colSpan={5} className="px-4 py-4 text-center text-slate-500">
+              <td colSpan={5} className="px-4 py-4 text-center text-slate-500 dark:text-slate-400">
                 No pending requests.
               </td>
             </tr>

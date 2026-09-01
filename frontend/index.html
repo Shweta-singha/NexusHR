@@ -5,6 +5,18 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>frontend</title>
+    <script>
+      // Runs before any CSS paints, so the theme is correct on first frame -
+      // ThemeProvider (features/theme/ThemeContext.tsx) reads the same cookie
+      // afterward to sync React state, but doesn't need to *apply* the class,
+      // avoiding a flash of the wrong theme while React boots.
+      (function () {
+        var match = document.cookie.match(/(?:^|; )nexushr_theme=(dark|light)/)
+        if (match && match[1] === 'dark') {
+          document.documentElement.classList.add('dark')
+        }
+      })()
+    </script>
   </head>
   <body>
     <div id="root"></div>

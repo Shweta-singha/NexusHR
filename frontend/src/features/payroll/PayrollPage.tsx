@@ -9,7 +9,7 @@ export default function PayrollPage() {
 
   return (
     <div>
-      <h1 className="mb-4 text-2xl font-semibold text-slate-900">Payroll</h1>
+      <h1 className="mb-4 text-2xl font-semibold text-slate-900 dark:text-slate-100">Payroll</h1>
       <MyPayslips />
       {user && ADMIN_ROLES.includes(user.role) && <AdminPayrollMonthView />}
     </div>

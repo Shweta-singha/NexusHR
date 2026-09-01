@@ -19,16 +19,16 @@ export default function EmployeeListPage() {
   return (
     <div className="grid grid-cols-3 gap-8">
       <div className="col-span-2">
-        <h1 className="mb-4 text-2xl font-semibold text-slate-900">Employees</h1>
+        <h1 className="mb-4 text-2xl font-semibold text-slate-900 dark:text-slate-100">Employees</h1>
 
-        {employeesQuery.isLoading && <p className="text-slate-500">Loading…</p>}
-        {employeesQuery.isError && <p className="text-red-600">Failed to load employees.</p>}
+        {employeesQuery.isLoading && <p className="text-slate-500 dark:text-slate-400">Loading…</p>}
+        {employeesQuery.isError && <p className="text-red-600 dark:text-red-400">Failed to load employees.</p>}
 
         {employeesQuery.data && (
           <>
-            <table className="w-full border-collapse overflow-hidden rounded-lg border border-slate-200 bg-white text-sm">
+            <table className="w-full border-collapse overflow-hidden rounded-lg border border-slate-200 bg-white text-sm dark:border-slate-700 dark:bg-slate-800">
               <thead>
-                <tr className="border-b border-slate-200 bg-slate-50 text-left text-slate-600">
+                <tr className="border-b border-slate-200 bg-slate-50 text-left text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">
                   <th className="px-4 py-2 font-medium">Username</th>
                   <th className="px-4 py-2 font-medium">Email</th>
                   <th className="px-4 py-2 font-medium">Role</th>
@@ -36,10 +36,10 @@ export default function EmployeeListPage() {
               </thead>
               <tbody>
                 {employeesQuery.data.content.map((emp) => (
-                  <tr key={emp.id} className="border-b border-slate-100 last:border-0">
-                    <td className="px-4 py-2 text-slate-900">{emp.username}</td>
-                    <td className="px-4 py-2 text-slate-600">{emp.email}</td>
-                    <td className="px-4 py-2 text-slate-600">{emp.role}</td>
+                  <tr key={emp.id} className="border-b border-slate-100 last:border-0 dark:border-slate-800">
+                    <td className="px-4 py-2 text-slate-900 dark:text-slate-100">{emp.username}</td>
+                    <td className="px-4 py-2 text-slate-600 dark:text-slate-400">{emp.email}</td>
+                    <td className="px-4 py-2 text-slate-600 dark:text-slate-400">{emp.role}</td>
                   </tr>
                 ))}
               </tbody>
@@ -49,17 +49,17 @@ export default function EmployeeListPage() {
               <button
                 onClick={() => setPage((p) => Math.max(0, p - 1))}
                 disabled={page === 0}
-                className="rounded-md border border-slate-300 px-3 py-1 disabled:opacity-40"
+                className="rounded-md border border-slate-300 px-3 py-1 disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500 dark:border-slate-600"
               >
                 Previous
               </button>
-              <span className="text-slate-600">
+              <span className="text-slate-600 dark:text-slate-400">
                 Page {employeesQuery.data.number + 1} of {Math.max(1, employeesQuery.data.totalPages)}
               </span>
               <button
                 onClick={() => setPage((p) => p + 1)}
                 disabled={page + 1 >= employeesQuery.data.totalPages}
-                className="rounded-md border border-slate-300 px-3 py-1 disabled:opacity-40"
+                className="rounded-md border border-slate-300 px-3 py-1 disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500 dark:border-slate-600"
               >
                 Next
               </button>
@@ -69,10 +69,10 @@ export default function EmployeeListPage() {
       </div>
 
       <div>
-        <h2 className="mb-4 text-lg font-semibold text-slate-900">Departments</h2>
-        {departmentsQuery.isLoading && <p className="text-slate-500">Loading…</p>}
+        <h2 className="mb-4 text-lg font-semibold text-slate-900 dark:text-slate-100">Departments</h2>
+        {departmentsQuery.isLoading && <p className="text-slate-500 dark:text-slate-400">Loading…</p>}
         {departmentsQuery.data && (
-          <div className="rounded-lg border border-slate-200 bg-white p-4">
+          <div className="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800">
             <DepartmentTree nodes={departmentsQuery.data} />
           </div>
         )}

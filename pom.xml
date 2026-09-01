@@ -10,7 +10,7 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>3.3.5</version>
+		<version>3.5.15</version>
 		<relativePath/>
 	</parent>
 
@@ -24,7 +24,24 @@
 
 	<properties>
 		<java.version>21</java.version>
+		<!-- Bumped Spring Boot 3.3.5 -> 3.5.15 (Day 9) to match the Spring Boot
+		     version spring-ai-bom 1.1.8 is built against - the RAG chatbot needs
+		     the Google GenAI starter, which only exists from Spring AI 1.1.0+.
+		     Spring AI 2.0.x requires Spring Boot 4, which is out of scope. -->
+		<spring-ai.version>1.1.8</spring-ai.version>
 	</properties>
+
+	<dependencyManagement>
+		<dependencies>
+			<dependency>
+				<groupId>org.springframework.ai</groupId>
+				<artifactId>spring-ai-bom</artifactId>
+				<version>${spring-ai.version}</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
 
 	<dependencies>
 

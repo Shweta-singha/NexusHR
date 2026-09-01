@@ -119,6 +119,8 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/leaves/balance").authenticated()
                 .requestMatchers(HttpMethod.PUT, "/api/leaves/*/submit").authenticated()
                 .requestMatchers(HttpMethod.PUT, "/api/leaves/*/cancel").authenticated()
+                // RAG chatbot over HR policy docs (Day 9) - any authenticated employee
+                .requestMatchers(HttpMethod.POST, "/api/hr-chat").authenticated()
                 // Admin-only leave actions
                 .requestMatchers(HttpMethod.POST,
                     "/api/leaves/*/approve",

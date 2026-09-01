@@ -41,9 +41,12 @@ public class EmployeeController {
         return new ResponseEntity<>(employeeService.toDto(created), HttpStatus.CREATED);
     }
 
-    // GET ALL — paginated
+    // GET ALL — paginated. MANAGER included so the Performance review UI's
+    // employee picker works for that role (ReviewController already lets
+    // MANAGER submit/view reviews) - see README known-limitations for the
+    // broader-access tradeoff this implies.
     @GetMapping("/all")
-    @PreAuthorize("hasAnyRole('ADMIN','HR_MANAGER')")
+    @PreAuthorize("hasAnyRole('ADMIN','HR_MANAGER','MANAGER')")
     public ResponseEntity<Page<EmployeeDto>> getAllEmployees(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {

@@ -31,7 +31,8 @@ NexusHR is a full-stack HR management platform covering employee and department 
 | Deployment | Done | Backend on Render, frontend on Vercel, both live and auto-deploying on push; local data migrated to Render's Postgres |
 | Test suite | Done | 3 integration test classes (payroll batch, leave approval + concurrency, auth flow) + 5 unit test classes (29 tests total, all passing) |
 | Postman collection | Done | `postman/NexusHR.postman_collection.json` — auth, employee, attendance, leave, payroll flows |
-| AI attrition + RAG | Not started | |
+| AI attrition scoring | Done | FastAPI/scikit-learn sidecar (`ai-service/`) scores attrition risk; wired into a Spring Batch job that persists scores against each employee |
+| RAG chatbot | Done | Spring AI + pgvector + Gemini free tier (Developer API, not Vertex) over seeded HR policy docs; `POST /api/hr-chat`, any authenticated employee |
 | Kubernetes/EKS | Not started | Render/Vercel is the live deployment target; EKS was an earlier plan not yet pursued |
 
 ## Local Run
@@ -45,6 +46,7 @@ NexusHR is a full-stack HR management platform covering employee and department 
    ```
 2. Set required environment variables (see `Employee/src/main/resources/application.properties` for the full list):
    - `JWT_SECRET_KEY` — **required**, no default; the app fails fast at startup without it. Generate one with `openssl rand -base64 32`.
+   - `GEMINI_API_KEY` — **required**, no default; the RAG chatbot (`/api/hr-chat`) needs it to reach Gemini's free-tier Developer API. Get one at [aistudio.google.com/apikey](https://aistudio.google.com/apikey).
    - `MAIL_USERNAME` / `MAIL_PASSWORD` — optional, blank by default (leave/payroll email notifications no-op without them).
    - Datasource and Redis default to `localhost` with the credentials in `application.properties`, matching the ports `docker-compose.yml` exposes — no overrides needed for a local, non-containerized run.
 3. Run the app:
@@ -80,3 +82,4 @@ Integration tests need Docker running (Testcontainers provisions Postgres + Redi
 - `LeaveServiceImpl.carryForwardBalances()` and `closeLeaveCycle()` exist but are still unwired dead code — not called from anywhere. This is separate from `LeaveScheduler`, which *is* actually wired via `@Scheduled` cron jobs (monthly earned-leave accrual, year-end carry-forward with a 10-day cap) and covers similar ground with different logic.
 - PF/ESI challan export computes employer-side PF/ESI contributions from the employee's *current* salary structure at export time (not persisted anywhere on the payroll record itself). If a salary structure is revised after a payroll record was generated, the challan's employer columns reflect the current structure while the employee PF/ESI columns still reflect what was locked in at generation time.
 - Render's free tier spins down on inactivity — the first request after idle time can take 10–90+ seconds (cold start) before the backend responds.
+- `GET /api/employee/all` is open to any `MANAGER`, not just managers of the employee being reviewed — there's no manager-to-report or manager-to-department relationship modeled anywhere in the schema (`Employee` has no "reports to" field; `Department` has no "managed by" field), so a MANAGER using the Performance review UI can browse the full employee list rather than a scoped subset. Narrowing this would mean modeling that relationship first, not just adding a filter.

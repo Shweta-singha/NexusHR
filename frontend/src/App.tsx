@@ -5,6 +5,7 @@ import { ThemeProvider } from '@/features/theme/ThemeContext'
 import ProtectedRoute from '@/components/ProtectedRoute'
 import Layout from '@/components/Layout'
 import LoginPage from '@/features/auth/LoginPage'
+import SignupPage from '@/features/auth/SignupPage'
 import DashboardPage from '@/features/dashboard/DashboardPage'
 import EmployeeListPage from '@/features/employees/EmployeeListPage'
 import AttendancePage from '@/features/attendance/AttendancePage'
@@ -23,6 +24,7 @@ export default function App() {
           <AuthProvider>
             <Routes>
               <Route path="/login" element={<LoginPage />} />
+              <Route path="/signup" element={<SignupPage />} />
               <Route
                 element={
                   <ProtectedRoute>

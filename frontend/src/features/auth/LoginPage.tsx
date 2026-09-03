@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from './AuthContext'
 
 export default function LoginPage() {
@@ -66,6 +66,13 @@ export default function LoginPage() {
         >
           {isSubmitting ? 'Signing in…' : 'Sign in'}
         </button>
+
+        <p className="mt-4 text-center text-sm text-slate-600 dark:text-slate-400">
+          Don't have an account?{' '}
+          <Link to="/signup" className="font-medium text-slate-900 underline dark:text-slate-100">
+            Sign up
+          </Link>
+        </p>
       </form>
     </div>
   )

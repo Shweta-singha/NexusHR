@@ -1,0 +1,59 @@
+# Temporary, parallel-to-Employee/docker-compose.yml - proves all three
+# images can run as separate containers talking to each other over a Docker
+# network (by service name, not localhost), as a local stand-in for how
+# Kubernetes Services will resolve each other by name in EKS. Not meant to
+# replace the existing local-dev compose file or the live Render/Vercel
+# deployment - purely a Day 1 verification step before Day 2's Helm chart.
+#
+# Usage: docker compose -f docker-compose.full.yml up -d
+# Requires GEMINI_API_KEY set in the shell first (same as every other local
+# run this project does) - no default, same fail-fast philosophy as
+# JWT_SECRET_KEY.
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_DB: nexushr
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5435:5432"
+
+  redis:
+    image: redis:7
+    ports:
+      - "6381:6379"
+
+  ai-service:
+    image: nexushr-ai-service:local
+    # No env vars needed - main.py reads none, MODEL_PATH is a fixed
+    # relative path baked into the image at build time.
+
+  backend:
+    image: nexushr-backend:local
+    depends_on:
+      - postgres
+      - redis
+      - ai-service
+    ports:
+      - "8082:8081"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/nexushr
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      # Server-to-server call, resolved entirely inside the Docker network -
+      # unlike the frontend's browser-side calls below, this one genuinely
+      # can (and should) use the container's network name.
+      AI_SERVICE_URL: http://ai-service:8000
+
+  frontend:
+    image: nexushr-frontend:local
+    depends_on:
+      - backend
+    ports:
+      - "8080:80"

@@ -29,7 +29,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"username\": \"postman-demo-user\",\n  \"password\": \"PostmanDemo@2026\",\n  \"email\": \"postman-demo@example.com\",\n  \"role\": \"ADMIN\"\n}"
+              "raw": "{\n  \"username\": \"postman-demo-user\",\n  \"password\": \"PostmanDemo@2026\",\n  \"email\": \"postman-demo@example.com\"\n}"
             },
             "url": { "raw": "{{base_url}}/api/auth/register", "host": ["{{base_url}}"], "path": ["api", "auth", "register"] }
           }

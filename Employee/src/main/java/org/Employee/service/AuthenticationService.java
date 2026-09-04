@@ -72,9 +72,12 @@ public class AuthenticationService {
         if (employeeRepository.findByUsername(request.getUsername()).isPresent()) {
             throw new RuntimeException("Username already taken");
         }
-        String roleName = (request.getRole() != null) ? request.getRole().toUpperCase() : "EMPLOYEE";
-        Role role = roleRepository.findByName(roleName)
-                .orElseThrow(() -> new RuntimeException("Role not found: " + roleName));
+        // Public self-service registration can only ever create EMPLOYEE accounts.
+        // Any role value in the request body is ignored - elevating a user to
+        // MANAGER/HR_MANAGER/ADMIN requires an authenticated admin action via
+        // AdminController#updateRole.
+        Role role = roleRepository.findByName("EMPLOYEE")
+                .orElseThrow(() -> new RuntimeException("Role not found: EMPLOYEE"));
 
         Employee employee = new Employee();
         employee.setUsername(request.getUsername());

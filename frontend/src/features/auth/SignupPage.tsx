@@ -2,24 +2,10 @@ import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from './AuthContext'
 
-// Matches org.Employee.enums.RoleName exactly - the four roles this app's
-// @PreAuthorize checks actually reference. The `roles` DB table also has a
-// 5th row, USER, seeded back on Day 2 - it's a valid value the backend would
-// accept, but nothing in the app grants it any distinct behavior, so it's
-// deliberately left out of this dropdown rather than offering a role that
-// does nothing.
-const ROLES = [
-  { value: 'EMPLOYEE', label: 'Employee' },
-  { value: 'MANAGER', label: 'Manager' },
-  { value: 'HR_MANAGER', label: 'HR Manager' },
-  { value: 'ADMIN', label: 'Admin' },
-]
-
 export default function SignupPage() {
   const [username, setUsername] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [role, setRole] = useState('EMPLOYEE')
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const { register } = useAuth()
@@ -30,7 +16,7 @@ export default function SignupPage() {
     setError(null)
     setIsSubmitting(true)
     try {
-      await register({ username, email, password, role })
+      await register({ username, email, password })
       navigate('/')
     } catch {
       setError('Could not create account — the username may already be taken.')
@@ -90,22 +76,6 @@ export default function SignupPage() {
           minLength={6}
           required
         />
-
-        <label htmlFor="signup-role" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
-          Role
-        </label>
-        <select
-          id="signup-role"
-          className={fieldClass}
-          value={role}
-          onChange={(e) => setRole(e.target.value)}
-        >
-          {ROLES.map((r) => (
-            <option key={r.value} value={r.value}>
-              {r.label}
-            </option>
-          ))}
-        </select>
 
         {error && <p className="mb-4 text-sm text-red-600 dark:text-red-400" role="alert">{error}</p>}
 

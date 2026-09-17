@@ -28,6 +28,7 @@ the same code runs unchanged on a real cluster by pointing --master at one.)
 
 import os
 
+from pyspark.errors import AnalysisException
 from pyspark.ml import Pipeline
 from pyspark.ml.feature import OneHotEncoder, StringIndexer, VectorAssembler
 from pyspark.sql import SparkSession
@@ -91,8 +92,15 @@ def main():
     spark = build_spark_session()
     spark.sparkContext.setLogLevel("WARN")
 
-    df = spark.read.csv(DATA_PATH, header=True, inferSchema=True)
-    print(f"Loaded {df.count()} rows, {len(df.columns)} columns from {DATA_PATH}")
+    try:
+        df = spark.read.csv(DATA_PATH, header=True, inferSchema=True)
+        row_count = df.count()
+    except AnalysisException:
+        spark.stop()
+        raise SystemExit(
+            f"synthetic_attrition.csv not found at {DATA_PATH} -- run generate_data.py first"
+        )
+    print(f"Loaded {row_count} rows, {len(df.columns)} columns from {DATA_PATH}")
 
     pipeline = build_feature_pipeline()
     fitted = pipeline.fit(df)

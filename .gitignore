@@ -13,3 +13,5 @@ target/
 # Local-only pg_dump backups (e.g. taken before switching the local Postgres
 # image) - contain real local dev data, never committed
 db_backups/
+# Generated output from the Spark feature pipeline demo - regenerable, not source
+ai-service/spark_pipeline/output/

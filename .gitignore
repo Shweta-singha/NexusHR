@@ -15,3 +15,10 @@ target/
 db_backups/
 # Generated output from the Spark feature pipeline demo - regenerable, not source
 ai-service/spark_pipeline/output/
+# Synthetic event-level data from generate_raw_events.py - regenerable in
+# seconds, ~34MB, not read by any deployed code path (unlike
+# synthetic_attrition.csv, which the Dockerfile builds the model from)
+ai-service/data/employees.csv
+ai-service/data/attendance_events.csv
+ai-service/data/leave_requests.csv
+ai-service/data/overtime_log.csv
